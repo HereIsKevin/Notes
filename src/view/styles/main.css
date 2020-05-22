@@ -1,0 +1,56 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+.notes-app {
+  display: flex;
+  flex-direction: row;
+}
+
+.notes-editor {
+  padding: 10px;
+  height: calc(100vh - 20px);
+  outline: none;
+  flex-grow: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.notes-bar {
+  background-color: black;
+  color: white;
+  flex-basis: 200px;
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.notes-bar-container {
+  width: 200px;
+  position: fixed;
+  top: 0;
+  height: 100%;
+  padding: 0;
+}
+
+.notes-bar-surface {
+  padding: 10px;
+  margin: 0;
+  overflow: scroll;
+  height: calc(100% - 20px);
+}
+
+.notes-bar-item {
+  padding: 10px;
+}
+
+.notes-bar-item:hover {
+  background-color: #222222;
+}
+
+.notes-bar-item-name {
+  white-space: pre;
+}
