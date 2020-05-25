@@ -1,129 +1,228 @@
-export { NotesEditor, NotesApp };
+export { NotesApp };
 
 import { element } from "boredom";
-import { ipcRenderer } from "electron";
-import * as path from "path";
+import { ipcRenderer, IpcRendererEvent } from "electron";
 
 class NotesEditor extends element.Component {
-  private contents?: string;
+  private editorId: string;
+
+  private static editorIndex: number = 0;
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
-    this.contents = undefined;
+    this.editorId = `notes-editor-${NotesEditor.editorIndex}`;
 
-    ipcRenderer.on("notes-contents", (event, contents) => {
-      this.contents = contents;
+    NotesEditor.editorIndex++;
 
-      if (this.rendered) {
-        this.paint();
-      }
-    });
+    this.autoSave = element.exportHandler(this.autoSave.bind(this));
+  }
 
-    ipcRenderer.on("notes-names", (event, items) => {
-      if (this.contents === undefined) {
-        ipcRenderer.send("notes-open", items[0]);
-      }
-    });
+  public get content(): string {
+    const element: HTMLTextAreaElement | null = document.getElementById(
+      this.editorId
+    ) as HTMLTextAreaElement | null;
 
-    ipcRenderer.on("notes-save-call", (event) => {
-      console.log("save")
-      ipcRenderer.send("notes-save", (document.getElementsByClassName("notes-editor")[0] as HTMLElement).innerText);
-    });
+    if (element) {
+      return element.value;
+    } else {
+      throw "";
+    }
+  }
+
+  public set content(value: string) {
+    const element: HTMLTextAreaElement | null = document.getElementById(
+      this.editorId
+    ) as HTMLTextAreaElement | null;
+
+    if (element) {
+      element.value = value;
+    }
+  }
+
+  public autoSave(): void {
+    ipcRenderer.send("notes-save", NotesSidebar.currentFile, this.content);
   }
 
   public render(): string {
     return `
-      <div
-        class="notes-editor"
-        contenteditable="true"
-      >${this.contents}</div>
+      <textarea id="${
+        this.editorId
+      }" class="notes-editor" oninput="${this.autoSave()}"></textarea>
     `;
   }
 }
 
-class NotesBarItem extends element.Stateless {
-  private filename: string;
-
+class NotesSidebarItem extends element.Stateless {
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
-    this.launch = element.exportHandler(this.launch.bind(this));
-    this.filename = path.basename(
-      this.properties.path,
-      path.extname(this.properties.path)
-    );
+    this.open = element.exportHandler(this.open.bind(this));
   }
 
-  public launch(): void {
-    ipcRenderer.send("notes-open", this.properties.path);
+  public open(): void {
+    if (NotesSidebar.currentFile) {
+      ipcRenderer.send("notes-close", NotesSidebar.currentFile);
+    }
+
+    NotesSidebar.currentFile = this.properties.file;
+    ipcRenderer.send("notes-open", this.properties.file);
   }
 
   public render(): string {
     return `
-      <div
-        class="notes-bar-item"
-        onclick="${this.launch()}"
-      >
-        <div class="notes-bar-item-name">${this.filename}</div>
+      <div class="notes-sidebar-item" onclick="${this.open()}">
+        <div class="notes-sidebar-item-name">${this.properties.name}</div>
       </div>
     `;
   }
 }
 
-class NotesBar extends element.Component {
-  private items: NotesBarItem[];
+class NotesSidebar extends element.Component {
+  public static currentFile: string = "";
+
+  private items: { [file: string]: NotesSidebarItem };
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
-    this.items = [];
+    this.items = {};
+  }
 
-    ipcRenderer.send("notes-get-names");
-    ipcRenderer.on("notes-names", (event, items) => {
-      this.items = [];
+  public listItems(): { [file: string]: NotesSidebarItem } {
+    return this.items;
+  }
 
-      for (let item of items) {
-        this.items.push(element.create(NotesBarItem, { path: item }));
-      }
-
-      if (this.rendered) {
-        this.paint();
-      }
+  public addItem(file: string, name: string): void {
+    this.items[file] = element.create(NotesSidebarItem, {
+      file: file,
+      name: name,
     });
+
+    if (this.rendered) {
+      this.paint();
+    }
+  }
+
+  public removeItem(file: string): void {
+    delete this.items[file];
+
+    if (this.rendered) {
+      this.paint();
+    }
   }
 
   public render(): string {
     return this.generate`
-      <div class="notes-bar">
-        <div class="notes-bar-container">
-          <div class="notes-bar-surface">
-            ${this.items.map((x) => this.generate`${x}`).join("")}
-          </div>
-        </div>
+      <div class="notes-sidebar">
+        ${Object.values(this.items)
+          .map((x: NotesSidebarItem): string => this.generate`${x}`)
+          .join("")}
+      </div>
+    `;
+  }
+}
+
+class NotesControls extends element.Component {
+  public constructor(properties: element.Dictionary, mount?: element.Mount) {
+    super(properties, mount);
+
+    this.onNew = element.exportHandler(this.onNew.bind(this));
+    this.onSave = element.exportHandler(this.onSave.bind(this));
+  }
+
+  public onNew(): void {
+    ipcRenderer.send("notes-new");
+  }
+
+  public onSave(): void {
+    ipcRenderer.send(
+      "notes-save",
+      NotesSidebar.currentFile,
+      this.properties.app.editor.content
+    );
+  }
+
+  public render(): string {
+    return `
+      <div class="notes-controls">
+        <button onclick="${this.onNew()}">New</button>
+        <button onclick="${this.onSave()}">Force Save</button>
       </div>
     `;
   }
 }
 
 class NotesApp extends element.Component {
+  private sidebar: NotesSidebar;
   private editor: NotesEditor;
-  private sidebar: NotesBar;
+  private controls: NotesControls;
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
+    this.sidebar = element.create(NotesSidebar);
     this.editor = element.create(NotesEditor);
-    this.sidebar = element.create(NotesBar);
+    this.controls = element.create(NotesControls, { app: this });
+
+    ipcRenderer.on(
+      "notes-sidebar-rename-item",
+      (
+        event: IpcRendererEvent,
+        oldPath: string,
+        newPath: string,
+        name: string
+      ) => {
+        this.sidebar.removeItem(oldPath);
+        this.sidebar.addItem(newPath, name);
+        NotesSidebar.currentFile = newPath;
+      }
+    );
+
+    ipcRenderer.on(
+      "notes-sidebar-add-item",
+      (event: IpcRendererEvent, path: string, name: string) => {
+        NotesSidebar.currentFile = path;
+        this.sidebar.addItem(path, name);
+      }
+    );
+
+    ipcRenderer.on(
+      "notes-contents",
+      (event: IpcRendererEvent, path: string, contents: string) => {
+        this.editor.content = contents;
+      }
+    );
+
+    ipcRenderer.on(
+      "notes-sidebar-load-items",
+      (event: IpcRendererEvent, items: string[][]) => {
+        for (let item of Object.keys(this.sidebar.listItems())) {
+          this.sidebar.removeItem(item);
+        }
+
+        for (let [path, name] of items) {
+          this.sidebar.addItem(path, name);
+        }
+      }
+    );
+
+    ipcRenderer.send("notes-sidebar-load");
   }
 
   public render(): string {
     return this.generate`
       <div class="notes-app">
-        ${this.sidebar}
-        ${this.editor}
+        <div class="notes-left-panel">
+          <div class="notes-left-panel-surface">
+            ${this.controls}
+            ${this.sidebar}
+          </div>
+        </div>
+        <div class="notes-center-panel">
+          ${this.editor}
+        </div>
       </div>
     `;
   }
 }
-``
