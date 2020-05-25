@@ -81,31 +81,39 @@ class NotesSidebarItem extends element.Stateless {
 class NotesSidebar extends element.Component {
   public static currentFile: string = "";
 
-  private items: { [file: string]: NotesSidebarItem };
+  private internalItems: { [file: string]: NotesSidebarItem };
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
-    this.items = {};
+    this.internalItems = {};
   }
 
-  public listItems(): { [file: string]: NotesSidebarItem } {
-    return this.items;
-  }
+  public get items(): { [file: string]: NotesSidebarItem } {
+    return new Proxy(this.internalItems, {
+      get: (
+        target: { [file: string]: NotesSidebarItem },
+        name: string
+      ): NotesSidebarItem => target[name],
+      set: (
+        target: { [file: string]: NotesSidebarItem },
+        name: string,
+        value: NotesSidebarItem,
+        receiver: any
+      ): boolean => {
+        target[name] = value;
 
-  public addItem(file: string, name: string): void {
-    this.items[file] = element.create(NotesSidebarItem, {
-      file: file,
-      name: name,
+        if (this.rendered) {
+          this.paint();
+        }
+
+        return true;
+      },
     });
-
-    if (this.rendered) {
-      this.paint();
-    }
   }
 
-  public removeItem(file: string): void {
-    delete this.items[file];
+  public set items(value: { [file: string]: NotesSidebarItem }) {
+    this.internalItems = value;
 
     if (this.rendered) {
       this.paint();
@@ -173,8 +181,22 @@ class NotesApp extends element.Component {
         newPath: string,
         name: string
       ) => {
-        this.sidebar.removeItem(oldPath);
-        this.sidebar.addItem(newPath, name);
+        const descriptor = Object.getOwnPropertyDescriptor(
+          this.sidebar.items,
+          oldPath
+        );
+
+        if (typeof descriptor !== "undefined") {
+          Object.defineProperty(this.sidebar.items, newPath, descriptor);
+        }
+
+        delete this.sidebar.items[oldPath];
+
+        this.sidebar.items[newPath] = element.create(NotesSidebarItem, {
+          file: newPath,
+          name: name,
+        });
+
         NotesSidebar.currentFile = newPath;
       }
     );
@@ -183,7 +205,10 @@ class NotesApp extends element.Component {
       "notes-sidebar-add-item",
       (event: IpcRendererEvent, path: string, name: string) => {
         NotesSidebar.currentFile = path;
-        this.sidebar.addItem(path, name);
+        this.sidebar.items[path] = element.create(NotesSidebarItem, {
+          file: path,
+          name: name,
+        });
       }
     );
 
@@ -197,12 +222,15 @@ class NotesApp extends element.Component {
     ipcRenderer.on(
       "notes-sidebar-load-items",
       (event: IpcRendererEvent, items: string[][]) => {
-        for (let item of Object.keys(this.sidebar.listItems())) {
-          this.sidebar.removeItem(item);
+        for (let item of Object.keys(this.sidebar.items)) {
+          delete this.sidebar.items[item];
         }
 
         for (let [path, name] of items) {
-          this.sidebar.addItem(path, name);
+          this.sidebar.items[path] = element.create(NotesSidebarItem, {
+            file: path,
+            name: name,
+          });
         }
       }
     );
