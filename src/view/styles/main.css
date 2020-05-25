@@ -2,7 +2,10 @@
   box-sizing: border-box;
 }
 
-html, body, #root, .notes-app {
+html,
+body,
+#root,
+.notes-app {
   height: 100%;
 }
 

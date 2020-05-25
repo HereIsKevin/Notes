@@ -15,7 +15,7 @@ class JSONDatabase {
     try {
       fsSync.accessSync(this.file, fsConstants.F_OK);
     } catch (e) {
-      fsSync.writeFileSync(this.file, "{}") ;
+      fsSync.writeFileSync(this.file, "{}");
     }
 
     this.json = JSON.parse(fsSync.readFileSync(this.file).toString());

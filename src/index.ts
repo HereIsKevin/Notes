@@ -124,9 +124,7 @@ class App {
       },
     });
 
-    window.loadFile(
-      [app.getAppPath(), "view", "index.html"].join(path.sep)
-    );
+    window.loadFile([app.getAppPath(), "view", "index.html"].join(path.sep));
   }
 }
 
