@@ -1,7 +1,14 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root, .notes-app {
+  height: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
-  font-family: sans-serif;
 }
 
 .notes-app {
@@ -9,48 +16,40 @@ body {
   flex-direction: row;
 }
 
-.notes-editor {
-  padding: 10px;
-  height: calc(100vh - 20px);
-  outline: none;
-  flex-grow: 1;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  overflow: hidden;
-  white-space: pre;
-}
-
-.notes-bar {
-  background-color: black;
-  color: white;
-  flex-basis: 200px;
+.notes-left-panel {
+  flex-basis: 150px;
   flex-grow: 0;
   flex-shrink: 0;
+  flex-direction: column;
+  background-color: black;
+  overflow: scroll;
 }
 
-.notes-bar-container {
-  width: 200px;
+.notes-left-panel-container {
+  width: 150px;
   position: fixed;
   top: 0;
   height: 100%;
   padding: 0;
+  max-width: 150px;
+  overflow: scroll;
 }
 
-.notes-bar-surface {
+.notes-sidebar {
   padding: 10px;
   margin: 0;
   overflow: scroll;
-  height: calc(100% - 20px);
 }
 
-.notes-bar-item {
-  padding: 10px;
+.notes-sidebar-item {
+  color: white;
 }
 
-.notes-bar-item:hover {
-  background-color: #222222;
+.notes-center-panel {
+  flex-grow: 1;
 }
 
-.notes-bar-item-name {
-  white-space: pre;
+.notes-editor {
+  height: 100%;
+  width: 100%;
 }
