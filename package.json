@@ -2,7 +2,15 @@
   "name": "notes",
   "version": "0.1.0",
   "description": "Simple, cross-platform notes app built with web technologies",
-  "main": "./build/index.js",
+  "main": "index.js",
+  "scripts": {
+    "clean": "rm -rf ./build/",
+    "watch:html": "nodemon --exec 'cp ./src/view/index.html ./build/view/index.html' --ext html --watch ./src/view/",
+    "watch:scss": "sass --watch ./src/view/styles/main.scss ./build/view/styles/main.css",
+    "watch:ts": "tsc --watch",
+    "build:dev": "tsc; sass ./src/view/styles/main.scss ./build/view/styles/main.css; cp ./src/view/index.html ./build/view/index.html",
+    "build:release": "npm run build:dev; cp ./package.json ./build/package.json; cd ./build/; npm install --only=production; cd ../; electron-packager --overwrite ./build/ Notes"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/HereIsKevin/Notes.git"
@@ -14,10 +22,13 @@
   },
   "homepage": "https://github.com/HereIsKevin/Notes#readme",
   "dependencies": {
-    "boredom": "file:../boreDOM/boredom-0.2.0.tgz"
+    "boredom": "https://github.com/HereIsKevin/boreDOM/releases/download/v0.3.0/boredom-0.3.0.tgz"
   },
   "devDependencies": {
     "electron": "^9.0.0",
+    "electron-packager": "^14.2.1",
+    "nodemon": "^2.0.4",
+    "sass": "^1.26.5",
     "typescript": "^3.9.3"
   }
 }
