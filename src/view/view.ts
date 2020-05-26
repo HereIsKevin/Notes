@@ -5,6 +5,7 @@ import { ipcRenderer, IpcRendererEvent } from "electron";
 
 class NotesEditor extends element.Component {
   private editorId: string;
+  private saving: boolean;
 
   private static editorIndex: number = 0;
 
@@ -12,10 +13,15 @@ class NotesEditor extends element.Component {
     super(properties, mount);
 
     this.editorId = `notes-editor-${NotesEditor.editorIndex}`;
+    this.saving = false;
 
     NotesEditor.editorIndex++;
 
     this.autoSave = element.exportHandler(this.autoSave.bind(this));
+
+    ipcRenderer.on("notes-save-finished", (event: IpcRendererEvent) => {
+      this.saving = false;
+    })
   }
 
   public get content(): string {
@@ -41,7 +47,10 @@ class NotesEditor extends element.Component {
   }
 
   public autoSave(): void {
-    ipcRenderer.send("notes-save", NotesSidebar.currentFile, this.content);
+    if (!this.saving) {
+      this.saving = true;
+      ipcRenderer.send("notes-save", NotesSidebar.currentFile, this.content);
+    }
   }
 
   public render(): string {
@@ -174,7 +183,7 @@ class NotesApp extends element.Component {
     this.controls = element.create(NotesControls, { app: this });
 
     ipcRenderer.on(
-      "notes-sidebar-rename-item",
+      "notes-rename",
       (
         event: IpcRendererEvent,
         oldPath: string,
@@ -202,7 +211,7 @@ class NotesApp extends element.Component {
     );
 
     ipcRenderer.on(
-      "notes-sidebar-add-item",
+      "notes-add",
       (event: IpcRendererEvent, path: string, name: string) => {
         NotesSidebar.currentFile = path;
         this.sidebar.items[path] = element.create(NotesSidebarItem, {
@@ -220,7 +229,7 @@ class NotesApp extends element.Component {
     );
 
     ipcRenderer.on(
-      "notes-sidebar-load-items",
+      "notes-items",
       (event: IpcRendererEvent, items: string[][]) => {
         for (let item of Object.keys(this.sidebar.items)) {
           delete this.sidebar.items[item];
@@ -235,7 +244,7 @@ class NotesApp extends element.Component {
       }
     );
 
-    ipcRenderer.send("notes-sidebar-load");
+    ipcRenderer.send("notes-load");
   }
 
   public render(): string {
