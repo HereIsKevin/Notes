@@ -11,6 +11,7 @@ import { JSONDatabase } from "./jsondatabase";
 
 const notesPath = [os.homedir(), ".notes"].join(path.sep);
 const fileDatabase = [notesPath, "files.json"].join(path.sep);
+const noteUnamed = "Untitled Note";
 
 class FileLoader {
   private static loaders: FileLoader[] = [];
@@ -20,9 +21,13 @@ class FileLoader {
 
   public constructor(file: string) {
     this.file = file;
+  }
 
-    fs.readFile(this.file)
-      .then((value: Buffer): void => {
+  public open(): Promise<void> {
+    return fs
+      .readFile(this.file)
+      .then((value: Buffer) => {
+        // send contents to windows
         for (let window of BrowserWindow.getAllWindows()) {
           window.webContents.send(
             "notes-contents",
@@ -31,30 +36,98 @@ class FileLoader {
           );
         }
       })
-      .catch((): void => {
+      .catch(() => {
         console.error(`[error] failed to open ${this.file}`);
+
+        // send blank file on failure
+        for (let window of BrowserWindow.getAllWindows()) {
+          window.webContents.send("notes-contents", this.file, "");
+        }
+      })
+      .then(() => {
+        for (let window of BrowserWindow.getAllWindows()) {
+          window.webContents.send("notes-open-finished");
+        }
       });
   }
 
-  public write(contents: string): Promise<void> {
-    return fs.writeFile(this.file, contents).catch((): void => {
-      console.error(`[error] failed to write ${this.file}`);
+  public async save(contents: string): Promise<void> {
+    const title: string = contents.trim().split("\n")[0] || "Untitled Note";
+    const oldPath: string = this.file;
+    const newPath: string = await FileLoader.generateName(
+      [notesPath, `${title}.md`].join(path.sep)
+    );
+
+    return fs // check if directory exists
+      .access(notesPath, fsConstants.F_OK)
+      .catch(() =>
+        fs // create directory recursively if it doesn't exist
+          .mkdir(notesPath, { recursive: true })
+          .then(() => console.log(`[log] created ${notesPath}`))
+          .catch(() => console.log(`[error] failed to create ${notesPath}`))
+      )
+      .then(() => fs.writeFile(oldPath, contents)) // write the file
+      .catch(() => console.error(`[error] failed to write ${oldPath}`))
+      .then(() => fs.rename(oldPath, newPath)) // rename file based on contents
+      .catch(() => console.error(`[error] failed to rename ${oldPath}`))
+      .then(() => {
+        this.file = newPath;
+
+        // update database
+        delete FileLoader.database.json[oldPath];
+        FileLoader.database.json[newPath] = title;
+        FileLoader.database.write();
+
+        // notify windows
+        for (let window of BrowserWindow.getAllWindows()) {
+          window.webContents.send("notes-rename", oldPath, newPath, title);
+          window.webContents.send("notes-save-finished");
+        }
+      });
+  }
+
+  public new(): Promise<void> {
+    return fs // check if directory exists
+      .access(notesPath, fsConstants.F_OK)
+      .catch(() =>
+        fs // create directory recursively if it doesn't exist
+          .mkdir(notesPath, { recursive: true })
+          .then(() => console.log(`[log] created ${notesPath}`))
+          .catch(() => console.log(`[error] failed to create ${notesPath}`))
+      )
+      .then(() => fs.writeFile(this.file, "")) // create empty file
+      .catch(() => console.error(`[error] failed to write ${this.file}`))
+      .then(() => {
+        FileLoader.database.json[this.file] = noteUnamed;
+        FileLoader.database.write();
+
+        for (let window of BrowserWindow.getAllWindows()) {
+          window.webContents.send("notes-add", this.file, noteUnamed);
+
+          window.webContents.send("notes-new-finished");
+        }
+      });
+  }
+
+  public close(contents: string): Promise<void> {
+    return this.save(contents).then(() => {
+      for (let window of BrowserWindow.getAllWindows()) {
+        window.webContents.send("notes-close-finished");
+      }
     });
   }
 
-  public static generateName(file: string): string {
+  public static async generateName(file: string): Promise<string> {
     let fileName: string = file;
 
-    const occupied = (path: string): boolean => {
-      try {
-        fsSync.accessSync(path, fsConstants.F_OK);
-        return true;
-      } catch (e) {
-        return false;
-      }
+    const occupied = (path: string): Promise<boolean> => {
+      return fs
+        .access(path, fsConstants.F_OK)
+        .then(() => true)
+        .catch(() => false);
     };
 
-    while (occupied(fileName)) {
+    while (await occupied(fileName)) {
       fileName = `${path.dirname(fileName)}${path.sep}${path.basename(
         fileName,
         path.extname(fileName)
@@ -64,7 +137,7 @@ class FileLoader {
     return fileName;
   }
 
-  public static initialize(): void {
+  public static async initialize(): Promise<void> {
     try {
       fsSync.accessSync(notesPath, fsConstants.F_OK);
     } catch (e) {
@@ -72,83 +145,54 @@ class FileLoader {
     }
 
     FileLoader.database = new JSONDatabase(fileDatabase);
+    await FileLoader.database.read();
 
     ipcMain.on("notes-open", (event: IpcMainEvent, file: string): void => {
+      const loader: FileLoader = new FileLoader(file);
       FileLoader.loaders.push(new FileLoader(file));
+      loader.open();
     });
 
     ipcMain.on(
       "notes-save",
-      (event: IpcMainEvent, file: string, contents: string): void => {
-        for (let loader of FileLoader.loaders.filter(
-          (loader: FileLoader): boolean => loader.file === file
-        )) {
-          loader.write(contents);
+      (event: IpcMainEvent, file: string, contents: string) => {
+        const loaders = FileLoader.loaders.filter(
+          (loader: FileLoader) => loader.file === file
+        );
 
-          const title: string =
-            contents.trim().split("\n")[0] || "Untitled Note";
-          const newPath: string = FileLoader.generateName(
-            [notesPath, `${title}.md`].join(path.sep)
-          );
-
-          fs.rename(file, newPath).catch((): void => {});
-
-          loader.file = newPath;
-
-          delete FileLoader.database.json[file];
-          FileLoader.database.json[newPath] = title;
-          FileLoader.database.write();
-
-          for (let window of BrowserWindow.getAllWindows()) {
-            window.webContents.send(
-              "notes-sidebar-rename-item",
-              file,
-              newPath,
-              title
-            );
-          }
+        if (loaders.length > 1) {
+          console.error(`[error] too many loaders for ${file}`);
+        } else if (loaders.length < 1) {
+          console.error(`[error] loader for ${file} missing`);
+        } else {
+          loaders[0].save(contents);
         }
       }
     );
 
     ipcMain.on("notes-close", (event: IpcMainEvent, file: string): void => {
       for (let loader of FileLoader.loaders.filter(
-        (loader: FileLoader): boolean => loader.file === file
+        (loader: FileLoader) => loader.file === file
       )) {
+        // loader.close(); // enable after fixing frontend
         FileLoader.loaders.splice(FileLoader.loaders.indexOf(loader), 1);
         console.log(`[log] closed ${file}`);
       }
     });
 
     ipcMain.on("notes-new", (event: IpcMainEvent): void => {
-      const file: string = FileLoader.generateName(
-        [notesPath, "Untitled Note.md"].join(path.sep)
-      );
-
-      FileLoader.database.json[file] = "Untitled Note";
-      FileLoader.database.write();
-
-      fs.writeFile(file, "")
-        .then((): void => {
-          FileLoader.loaders.push(new FileLoader(file));
+      FileLoader.generateName([notesPath, `${noteUnamed}.md`].join(path.sep))
+        .then((value: string) => {
+          const loader: FileLoader = new FileLoader(value);
+          FileLoader.loaders.push(loader);
+          loader.new();
         })
-        .catch((): void => {
-          console.error(`[error] failed to write ${file}`);
-        });
-
-      for (let window of BrowserWindow.getAllWindows()) {
-        window.webContents.send(
-          "notes-sidebar-add-item",
-          file,
-          "Untitled Note"
-        );
-      }
     });
 
-    ipcMain.on("notes-sidebar-load", (event: IpcMainEvent): void => {
+    ipcMain.on("notes-load", (event: IpcMainEvent): void => {
       for (let window of BrowserWindow.getAllWindows()) {
         window.webContents.send(
-          "notes-sidebar-load-items",
+          "notes-items",
           Object.entries(FileLoader.database.json)
         );
       }
