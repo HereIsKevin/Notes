@@ -1,9 +1,8 @@
 export { JSONDatabase };
 
-import * as fsSync from "fs";
-import { promises as fs } from "fs";
-import { constants as fsConstants } from "fs";
 import * as path from "path";
+
+import * as fsutils from "./fsutils";
 
 class JSONDatabase {
   private file: string;
@@ -15,46 +14,23 @@ class JSONDatabase {
     this.json = {};
   }
 
-  public read(): Promise<void> {
-    return fs
-      .access(path.dirname(this.file), fsConstants.F_OK)
-      .catch(() =>
-        fs
-          .mkdir(path.dirname(this.file), { recursive: true })
-          .then(() => console.log(`[log] created ${path.dirname(this.file)}`))
-          .catch(() =>
-            console.log(`[log] failed to create ${path.dirname(this.file)}`)
-          )
-      )
-      .then(() => fs.access(this.file, fsConstants.F_OK))
-      .catch(() =>
-        fs
-          .writeFile(this.file, "{}")
-          .then(() => console.log(`[log] created ${this.file}`))
-          .catch(() => console.error(`[error] failed to write ${this.file}`))
-      )
-      .then(() =>
-        fs
-          .readFile(this.file)
-          .then((value: Buffer) => (this.json = JSON.parse(value.toString())))
-          .catch(() => console.error(`[error] failed to read ${this.file}`))
-      );
+  public async read(): Promise<void> {
+    if (!(await fsutils.exists(path.dirname(this.file)))) {
+      await fsutils.createDirectory(path.dirname(this.file));
+    }
+
+    if (!(await fsutils.exists(this.file))) {
+      await fsutils.writeFile(this.file, "{}");
+    }
+
+    this.json = JSON.parse(await fsutils.readFile(this.file) || "{}");
   }
 
-  public write(): Promise<void> {
-    return fs
-      .access(path.dirname(this.file), fsConstants.F_OK)
-      .catch(() =>
-        fs
-          .mkdir(path.dirname(this.file), { recursive: true })
-          .then(() => console.log(`[log] created ${path.dirname(this.file)}`))
-          .catch(() =>
-            console.log(`[log] failed to create ${path.dirname(this.file)}`)
-          )
-      )
-      .then(() => fs.writeFile(this.file, JSON.stringify(this.json)))
-      .catch((): void => {
-        console.error(`[error] failed to write ${this.file}`);
-      });
+  public async write(): Promise<void> {
+    if (!(await fsutils.exists(path.dirname(this.file)))) {
+      await fsutils.createDirectory(path.dirname(this.file));
+    }
+
+    await fsutils.writeFile(this.file, JSON.stringify(this.json));
   }
 }
