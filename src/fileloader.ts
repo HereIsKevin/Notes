@@ -1,13 +1,11 @@
 export { FileLoader };
 
 import { ipcMain, IpcMainEvent, BrowserWindow } from "electron";
-import * as fsSync from "fs";
-import { promises as fs } from "fs";
-import { constants as fsConstants } from "fs";
 import * as os from "os";
 import * as path from "path";
 
 import { JSONDatabase } from "./jsondatabase";
+import * as fsutils from "./fsutils";
 
 const notesPath = [os.homedir(), ".notes"].join(path.sep);
 const fileDatabase = [notesPath, "files.json"].join(path.sep);
@@ -23,32 +21,13 @@ class FileLoader {
     this.file = file;
   }
 
-  public open(): Promise<void> {
-    return fs
-      .readFile(this.file)
-      .then((value: Buffer) => {
-        // send contents to windows
-        for (let window of BrowserWindow.getAllWindows()) {
-          window.webContents.send(
-            "notes-contents",
-            this.file,
-            value.toString()
-          );
-        }
-      })
-      .catch(() => {
-        console.error(`[error] failed to open ${this.file}`);
+  public async open(): Promise<void> {
+    const contents: string | undefined = await fsutils.readFile(this.file);
 
-        // send blank file on failure
-        for (let window of BrowserWindow.getAllWindows()) {
-          window.webContents.send("notes-contents", this.file, "");
-        }
-      })
-      .then(() => {
-        for (let window of BrowserWindow.getAllWindows()) {
-          window.webContents.send("notes-open-finished");
-        }
-      });
+    for (let window of BrowserWindow.getAllWindows()) {
+      window.webContents.send("notes-contents", this.file, contents || "");
+      window.webContents.send("notes-open-finished");
+    }
   }
 
   public async save(contents: string): Promise<void> {
@@ -58,76 +37,53 @@ class FileLoader {
       [notesPath, `${title}.md`].join(path.sep)
     );
 
-    return fs // check if directory exists
-      .access(notesPath, fsConstants.F_OK)
-      .catch(() =>
-        fs // create directory recursively if it doesn't exist
-          .mkdir(notesPath, { recursive: true })
-          .then(() => console.log(`[log] created ${notesPath}`))
-          .catch(() => console.log(`[error] failed to create ${notesPath}`))
-      )
-      .then(() => fs.writeFile(oldPath, contents)) // write the file
-      .catch(() => console.error(`[error] failed to write ${oldPath}`))
-      .then(() => fs.rename(oldPath, newPath)) // rename file based on contents
-      .catch(() => console.error(`[error] failed to rename ${oldPath}`))
-      .then(() => {
-        this.file = newPath;
+    if (!(await fsutils.exists(notesPath))) {
+      await fsutils.createDirectory(notesPath);
+    }
 
-        // update database
-        delete FileLoader.database.json[oldPath];
-        FileLoader.database.json[newPath] = title;
-        FileLoader.database.write();
+    await fsutils.writeFile(oldPath, contents);
+    await fsutils.rename(oldPath, newPath);
 
-        // notify windows
-        for (let window of BrowserWindow.getAllWindows()) {
-          window.webContents.send("notes-rename", oldPath, newPath, title);
-          window.webContents.send("notes-save-finished");
-        }
-      });
+    this.file = newPath;
+
+    delete FileLoader.database.json[oldPath];
+    FileLoader.database.json[newPath] = title;
+    FileLoader.database.write();
+
+    for (let window of BrowserWindow.getAllWindows()) {
+      window.webContents.send("notes-rename", oldPath, newPath, title);
+      window.webContents.send("notes-save-finished");
+    }
   }
 
-  public new(): Promise<void> {
-    return fs // check if directory exists
-      .access(notesPath, fsConstants.F_OK)
-      .catch(() =>
-        fs // create directory recursively if it doesn't exist
-          .mkdir(notesPath, { recursive: true })
-          .then(() => console.log(`[log] created ${notesPath}`))
-          .catch(() => console.log(`[error] failed to create ${notesPath}`))
-      )
-      .then(() => fs.writeFile(this.file, "")) // create empty file
-      .catch(() => console.error(`[error] failed to write ${this.file}`))
-      .then(() => {
-        FileLoader.database.json[this.file] = noteUnamed;
-        FileLoader.database.write();
+  public async new(): Promise<void> {
+    if (!(await fsutils.exists(notesPath))) {
+      await fsutils.createDirectory(notesPath);
+    }
 
-        for (let window of BrowserWindow.getAllWindows()) {
-          window.webContents.send("notes-add", this.file, noteUnamed);
+    await fsutils.writeFile(this.file, "");
 
-          window.webContents.send("notes-new-finished");
-        }
-      });
+    FileLoader.database.json[this.file] = noteUnamed;
+    FileLoader.database.write();
+
+    for (let window of BrowserWindow.getAllWindows()) {
+      window.webContents.send("notes-add", this.file, noteUnamed);
+      window.webContents.send("notes-new-finished");
+    }
   }
 
-  public close(contents: string): Promise<void> {
-    return this.save(contents).then(() => {
-      for (let window of BrowserWindow.getAllWindows()) {
-        window.webContents.send("notes-close-finished");
-      }
-    });
+  public async close(contents: string): Promise<void> {
+    await this.save(contents);
+
+    for (let window of BrowserWindow.getAllWindows()) {
+      window.webContents.send("notes-close-finished");
+    }
   }
 
   public static async generateName(file: string): Promise<string> {
     let fileName: string = file;
 
-    const occupied = (path: string): Promise<boolean> => {
-      return fs
-        .access(path, fsConstants.F_OK)
-        .then(() => true)
-        .catch(() => false);
-    };
-
-    while (await occupied(fileName)) {
+    while (await fsutils.exists(fileName)) {
       fileName = `${path.dirname(fileName)}${path.sep}${path.basename(
         fileName,
         path.extname(fileName)
@@ -138,10 +94,8 @@ class FileLoader {
   }
 
   public static async initialize(): Promise<void> {
-    try {
-      fsSync.accessSync(notesPath, fsConstants.F_OK);
-    } catch (e) {
-      fsSync.mkdirSync(notesPath);
+    if (!(await fsutils.exists(notesPath))) {
+      await fsutils.createDirectory(notesPath);
     }
 
     FileLoader.database = new JSONDatabase(fileDatabase);
