@@ -9,7 +9,7 @@
     "watch:scss": "sass --watch ./src/view/styles/main.scss ./build/view/styles/main.css",
     "watch:ts": "tsc --watch",
     "build:dev": "tsc; sass ./src/view/styles/main.scss ./build/view/styles/main.css; cp ./src/view/index.html ./build/view/index.html",
-    "build:release": "npm run build:dev; cp ./package.json ./build/package.json; cd ./build/; npm install --only=production; cd ../; electron-packager --overwrite ./build/ Notes"
+    "build:release": "npm run build:dev; cp ./package.json ./build/package.json; cd ./build/; npm install --only=production; cd ../; electron-packager --overwrite ./build/ --out ./dist/ Notes"
   },
   "repository": {
     "type": "git",
