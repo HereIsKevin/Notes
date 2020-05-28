@@ -1,7 +1,10 @@
 import { app, BrowserWindow } from "electron";
 import * as path from "path";
 
-import { FileLoader } from "./fileloader.js";
+import { FileLoader } from "./fileloader";
+import * as logger from "./logger";
+
+logger.level(1);
 
 app.name = "Notes";
 app.allowRendererProcessReuse = true;
