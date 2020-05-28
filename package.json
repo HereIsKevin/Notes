@@ -4,7 +4,7 @@
   "description": "Simple, cross-platform notes app built with web technologies",
   "main": "index.js",
   "scripts": {
-    "clean": "rm -rf ./build/",
+    "clean": "rm -rf ./build/; rm -rf ./dist/",
     "watch:html": "nodemon --exec 'cp ./src/view/index.html ./build/view/index.html' --ext html --watch ./src/view/",
     "watch:scss": "sass --watch ./src/view/styles/main.scss ./build/view/styles/main.css",
     "watch:ts": "tsc --watch",
