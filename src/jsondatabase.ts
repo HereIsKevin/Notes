@@ -23,7 +23,7 @@ class JSONDatabase {
       await fsutils.writeFile(this.file, "{}");
     }
 
-    this.json = JSON.parse(await fsutils.readFile(this.file) || "{}");
+    this.json = JSON.parse((await fsutils.readFile(this.file)) || "{}");
   }
 
   public async write(): Promise<void> {
