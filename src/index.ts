@@ -1,10 +1,10 @@
-import { app, BrowserWindow } from "electron";
+import { shell, app, BrowserWindow, Menu } from "electron";
 import * as path from "path";
 
 import { FileLoader } from "./fileloader";
 import * as logger from "./logger";
 
-logger.level(1);
+// logger.level(1);
 
 app.name = "Notes";
 app.allowRendererProcessReuse = true;
@@ -21,7 +21,7 @@ const template = [
             { role: "services" },
             { type: "separator" },
             { role: "hide" },
-            { role: "hideothers" },
+            { role: "hideOthers" },
             { role: "unhide" },
             { type: "separator" },
             { role: "quit" },
@@ -50,7 +50,7 @@ const template = [
             { type: "separator" },
             {
               label: "Speech",
-              submenu: [{ role: "startspeaking" }, { role: "stopspeaking" }],
+              submenu: [{ role: "startSpeaking" }, { role: "stopSpeaking" }],
             },
           ]
         : [{ role: "delete" }, { type: "separator" }, { role: "selectAll" }]),
@@ -60,12 +60,12 @@ const template = [
     label: "View",
     submenu: [
       { role: "reload" },
-      { role: "forcereload" },
-      { role: "toggledevtools" },
+      { role: "forceReload" },
+      { role: "toggleDevTools" },
       { type: "separator" },
-      { role: "resetzoom" },
-      { role: "zoomin" },
-      { role: "zoomout" },
+      { role: "resetZoom" },
+      { role: "zoomIn" },
+      { role: "zoomOut" },
       { type: "separator" },
       { role: "togglefullscreen" },
     ],
@@ -90,14 +90,11 @@ const template = [
     submenu: [
       {
         label: "Learn More",
-        click: async () => {
-          const { shell } = require("electron");
-          await shell.openExternal("https://electronjs.org");
-        },
+        click: async () => await shell.openExternal("https://electronjs.org"),
       },
     ],
   },
-];
+] as Electron.MenuItemConstructorOptions[];
 
 class App {
   public constructor() {
@@ -128,6 +125,7 @@ class App {
     });
 
     window.loadFile([app.getAppPath(), "view", "index.html"].join(path.sep));
+    window.setMenu(Menu.buildFromTemplate(template));
   }
 }
 
