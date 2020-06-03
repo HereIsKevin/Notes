@@ -1,4 +1,12 @@
-export { exists, listDirectory, createDirectory, rename, writeFile, readFile };
+export {
+  exists,
+  listDirectory,
+  createDirectory,
+  rename,
+  writeFile,
+  readFile,
+  deleteFile,
+};
 
 import { promises as fs } from "fs";
 import { constants as fsConstants } from "fs";
@@ -58,5 +66,14 @@ async function readFile(path: string): Promise<string | undefined> {
   } catch {
     logger.error(`failed to read ${path}`);
     return undefined;
+  }
+}
+
+async function deleteFile(path: string): Promise<void> {
+  try {
+    await fs.unlink(path);
+    logger.log(`deleted ${path}`);
+  } catch {
+    logger.error(`failed to delete ${path}`);
   }
 }
