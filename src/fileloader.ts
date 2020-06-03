@@ -1,178 +1,132 @@
-export { FileLoader };
+export { initialize };
 
-import { ipcMain, IpcMainEvent, BrowserWindow } from "electron";
+import { BrowserWindow, ipcMain, IpcMainEvent } from "electron";
 import * as os from "os";
 import * as path from "path";
 
-import { JSONDatabase } from "./jsondatabase";
 import * as fsutils from "./fsutils";
+import { JSONDatabase } from "./jsondatabase";
+import * as logger from "./logger";
 
 const notesPath: string = [os.homedir(), ".notes"].join(path.sep);
-const fileDatabase: string = [notesPath, "files.json"].join(path.sep);
-const noteUnamed: string = "Untitled Note";
+const databasePath: string = [notesPath, "files.json"].join(path.sep);
 
-class FileLoader {
-  private static loaders: FileLoader[] = [];
-  private static database: JSONDatabase;
+async function generatePath(file: string, original?: string): Promise<string> {
+  // index for duplicates
+  let index: number = 1;
+  // current path of file
+  let filePath: string = file;
 
-  public file: string;
-  public contents: string;
+  // constants for parts of file path
+  const dirname: string = path.dirname(file);
+  const extname: string = path.extname(file);
+  const basename: string = path.basename(file, extname);
 
-  public constructor(file: string) {
-    this.file = file;
-    this.contents = "";
+  while (await fsutils.exists(filePath)) {
+    // prevent replacing of path if it is the original
+    if (filePath === original) {
+      break;
+    }
+
+    filePath = [dirname, `${basename} ${index}${extname}`].join(path.sep);
+    index++;
   }
 
-  public async open(): Promise<void> {
-    const contents: string | undefined = await fsutils.readFile(this.file);
-    this.contents = contents || "";
+  return filePath;
+}
 
-    for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send("notes-contents", this.file, this.contents);
+async function openFile(file: string): Promise<string> {
+  // read file and return empty string on undefined
+  return (await fsutils.readFile(file)) || "";
+}
+
+async function saveFile(file: string, contents: string): Promise<string[]> {
+  // get first non-whitespace line for title, otherwise use "Untitled Note"
+  const title: string =
+    contents.trimStart().split("\n", 1)[0] || "Untitled Note";
+  // generate new file path ignoring original path
+  const filePath: string = await generatePath(
+    [notesPath, `${title}.md`].join(path.sep),
+    file
+  );
+
+  // recreate directory for notes if it doesn't exist
+  if (!(await fsutils.exists(notesPath))) {
+    await fsutils.createDirectory(notesPath);
+  }
+
+  // write contents to the original file
+  await fsutils.writeFile(file, contents);
+  // rename the original file to the new file name
+  await fsutils.rename(file, filePath);
+
+  return [file, filePath, title];
+}
+
+async function newFile(file: string): Promise<void> {
+  // recreate directory for notes if it doesn't exist
+  if (!(await fsutils.exists(notesPath))) {
+    await fsutils.createDirectory(notesPath);
+  }
+
+  // create new file by writing "" to it
+  await fsutils.writeFile(file, "");
+}
+
+async function initialize(): Promise<void> {
+  const database = new JSONDatabase(databasePath);
+  await database.read();
+
+  ipcMain.on("notes-open", async (event: IpcMainEvent, file: string) => {
+    const contents: string = await openFile(file);
+
+    for (let window of BrowserWindow.getAllWindows()) {
+      window.webContents.send("notes-contents", file, contents);
       window.webContents.send("notes-open-finished");
     }
-  }
+  });
 
-  public async save(contents: string): Promise<void> {
-    const title: string = contents.trim().split("\n")[0] || "Untitled Note";
-    const oldPath: string = this.file;
-    const newPath: string = await FileLoader.generateName(
-      [notesPath, `${title}.md`].join(path.sep),
-      (this.contents.trim().split("\n")[0] || "Untitled Note") === title
+  ipcMain.on(
+    "notes-save",
+    async (event: IpcMainEvent, file: string, contents: string) => {
+      const save = await saveFile(file, contents);
+
+      delete database.json[save[0]];
+      database.json[save[1]] = save[2];
+      await database.write();
+
+      if (save[0] !== save[1]) {
+        for (let window of BrowserWindow.getAllWindows()) {
+          window.webContents.send("notes-rename", ...save);
+          window.webContents.send("notes-save-finished");
+        }
+      }
+    }
+  );
+
+  ipcMain.on("notes-close", (event: IpcMainEvent, file: string) =>
+    logger.log(`closed ${file}`)
+  );
+
+  ipcMain.on("notes-new", async (event: IpcMainEvent) => {
+    const file: string = await generatePath(
+      [notesPath, `Untitled Note.md`].join(path.sep)
     );
 
-    if (!(await fsutils.exists(notesPath))) {
-      await fsutils.createDirectory(notesPath);
-    }
+    await newFile(file);
 
-    await fsutils.writeFile(oldPath, contents);
-    await fsutils.rename(oldPath, newPath);
-
-    this.file = newPath;
-    this.contents = contents;
-
-    delete FileLoader.database.json[oldPath];
-    FileLoader.database.json[newPath] = title;
-    FileLoader.database.write();
+    database.json[file] = "Untitled Note";
+    await database.write();
 
     for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send("notes-rename", oldPath, newPath, title);
-      window.webContents.send("notes-save-finished");
-    }
-  }
-
-  public async new(): Promise<void> {
-    if (!(await fsutils.exists(notesPath))) {
-      await fsutils.createDirectory(notesPath);
-    }
-
-    await fsutils.writeFile(this.file, "");
-
-    FileLoader.database.json[this.file] = noteUnamed;
-    FileLoader.database.write();
-
-    for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send("notes-add", this.file);
+      window.webContents.send("notes-add", file, "Untitled Note");
       window.webContents.send("notes-new-finished");
     }
-  }
+  });
 
-  public async close(contents: string): Promise<void> {
-    await this.save(contents);
-
+  ipcMain.on("notes-load", (event: IpcMainEvent) => {
     for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send("notes-close-finished");
+      window.webContents.send("notes-items", Object.entries(database.json));
     }
-  }
-
-  public static async generateName(
-    file: string,
-    original: boolean = false
-  ): Promise<string> {
-    let index: number = 0;
-
-    while (
-      await fsutils.exists(
-        index
-          ? `${path.dirname(file)}${path.sep}${path.basename(
-              file,
-              path.extname(file)
-            )}${index}${path.extname(file)}`
-          : file
-      )
-    ) {
-      index++;
-    }
-
-    if (original) {
-      index--;
-      index = index < 0 ? 0 : index;
-    }
-
-    return index
-      ? `${path.dirname(file)}${path.sep}${path.basename(
-          file,
-          path.extname(file)
-        )}${index}${path.extname(file)}`
-      : file;
-  }
-
-  public static async initialize(): Promise<void> {
-    FileLoader.database = new JSONDatabase(fileDatabase);
-    await FileLoader.database.read();
-
-    ipcMain.on("notes-open", (event: IpcMainEvent, file: string) => {
-      const loader = new FileLoader(file);
-      FileLoader.loaders.push(new FileLoader(file));
-      loader.open();
-    });
-
-    ipcMain.on(
-      "notes-save",
-      (event: IpcMainEvent, file: string, contents: string) => {
-        const loaders = FileLoader.loaders.filter(
-          (loader: FileLoader) => loader.file === file
-        );
-
-        if (loaders.length > 1) {
-          console.error(`[error] too many loaders for ${file}`);
-        } else if (loaders.length < 1) {
-          console.error(`[error] loader for ${file} missing`);
-        } else {
-          loaders[0].save(contents);
-        }
-      }
-    );
-
-    ipcMain.on(
-      "notes-close",
-      (event: IpcMainEvent, file: string) => {
-        for (const loader of FileLoader.loaders.filter(
-          (loader: FileLoader) => loader.file === file
-        )) {
-          FileLoader.loaders.splice(FileLoader.loaders.indexOf(loader), 1);
-          console.log(`[log] closed ${file}`);
-        }
-      }
-    );
-
-    ipcMain.on("notes-new", (event: IpcMainEvent) => {
-      FileLoader.generateName(
-        [notesPath, `${noteUnamed}.md`].join(path.sep)
-      ).then((value: string) => {
-        const loader = new FileLoader(value);
-        FileLoader.loaders.push(loader);
-        loader.new();
-      });
-    });
-
-    ipcMain.on("notes-load", (event: IpcMainEvent) => {
-      for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send(
-          "notes-items",
-          Object.entries(FileLoader.database.json)
-        );
-      }
-    });
-  }
+  });
 }
