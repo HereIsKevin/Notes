@@ -1,7 +1,7 @@
 import { shell, app, BrowserWindow, Menu } from "electron";
 import * as path from "path";
 
-import { FileLoader } from "./fileloader";
+import * as fileloader from "./fileloader";
 import * as logger from "./logger";
 
 // logger.level(1);
@@ -98,17 +98,17 @@ const template = [
 
 class App {
   public constructor() {
-    FileLoader.initialize();
+    fileloader.initialize();
 
     this.createWindow();
 
-    app.on("activate", (): void => {
+    app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
         this.createWindow();
       }
     });
 
-    app.on("window-all-closed", (): void => {
+    app.on("window-all-closed", () => {
       if (process.platform !== "darwin") {
         app.quit();
       }
@@ -129,6 +129,4 @@ class App {
   }
 }
 
-app.on("ready", (): void => {
-  const notesApp = new App();
-});
+app.on("ready", () => new App());
