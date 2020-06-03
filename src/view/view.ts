@@ -1,7 +1,7 @@
 export { NotesApp };
 
 import { element } from "boredom";
-import { ipcRenderer, IpcRendererEvent } from "electron";
+import { ipcRenderer, IpcRendererEvent, ipcMain } from "electron";
 
 class NotesEditor extends element.Component {
   private readonly id: string;
@@ -183,9 +183,20 @@ class NotesApp extends element.Component {
       }
     );
 
-    ipcRenderer.on("notes-add", (event: IpcRendererEvent, file: string) => {
-      this.open(file);
-    });
+    ipcRenderer.on(
+      "notes-add",
+      (event: IpcRendererEvent, file: string, name: string) => {
+        this.sidebar.items.push(
+          element.create(NotesSidebarItem, {
+            name: name,
+            file: file,
+            app: this,
+          })
+        );
+
+        this.open(file);
+      }
+    );
 
     ipcRenderer.on(
       "notes-rename",
@@ -227,12 +238,32 @@ class NotesApp extends element.Component {
           );
         }
 
-        this.open(items[0][0]);
+        if (items.length < 1) {
+          this.new();
+        } else {
+          this.open(items[0][0]);
+        }
       }
     );
 
     ipcRenderer.on("notes-save-finished", (event: IpcRendererEvent) => {
       this.saved = false;
+    });
+
+    ipcRenderer.on("notes-remove", (event: IpcRendererEvent, path: string) => {
+      for (const item of this.sidebar.items.filter(
+        (x: NotesSidebarItem) => x.file === path
+      )) {
+        this.sidebar.items.splice(this.sidebar.items.indexOf(item), 1);
+      }
+    });
+
+    ipcRenderer.on("notes-delete-finished", (event: IpcRendererEvent) => {
+      if (this.sidebar.items.length < 1) {
+        this.new();
+      } else {
+        this.open(this.sidebar.items[0].file);
+      }
     });
 
     ipcRenderer.send("notes-load");
@@ -268,6 +299,10 @@ class NotesApp extends element.Component {
       this.file = file;
       ipcRenderer.send("notes-open", this.file);
     }
+  }
+
+  public delete(): void {
+    ipcRenderer.send("notes-delete", this.file);
   }
 
   public new(): void {
