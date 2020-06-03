@@ -1,4 +1,4 @@
-export { exists, createDirectory, rename, writeFile, readFile };
+export { exists, listDirectory, createDirectory, rename, writeFile, readFile };
 
 import { promises as fs } from "fs";
 import { constants as fsConstants } from "fs";
@@ -11,6 +11,15 @@ async function exists(path: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function listDirectory(path: string): Promise<string[] | undefined> {
+  try {
+    const files: string[] = await fs.readdir(path);
+    return files;
+  } catch {
+    logger.error(`failed to read directory ${path}`);
   }
 }
 
