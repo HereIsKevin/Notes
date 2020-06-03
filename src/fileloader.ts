@@ -36,6 +36,11 @@ async function generatePath(file: string, original?: string): Promise<string> {
 }
 
 async function openFile(file: string): Promise<string> {
+  // recreate directory for notes if it doesn't exist
+  if (!(await fsutils.exists(notesPath))) {
+    await fsutils.createDirectory(notesPath);
+  }
+
   // read file and return empty string on undefined
   return (await fsutils.readFile(file)) || "";
 }
@@ -73,6 +78,15 @@ async function newFile(file: string): Promise<void> {
   await fsutils.writeFile(file, "");
 }
 
+async function deleteFile(file: string): Promise<void> {
+  // recreate directory for notes if it doesn't exist
+  if (!(await fsutils.exists(notesPath))) {
+    await fsutils.createDirectory(notesPath);
+  }
+
+  await fsutils.deleteFile(file);
+}
+
 async function initialize(): Promise<void> {
   const database = new JSONDatabase(databasePath);
   await database.read();
@@ -82,7 +96,6 @@ async function initialize(): Promise<void> {
 
     for (let window of BrowserWindow.getAllWindows()) {
       window.webContents.send("notes-contents", file, contents);
-      window.webContents.send("notes-open-finished");
     }
   });
 
@@ -104,8 +117,11 @@ async function initialize(): Promise<void> {
     }
   );
 
-  ipcMain.on("notes-close", (event: IpcMainEvent, file: string) =>
-    logger.log(`closed ${file}`)
+  ipcMain.on(
+    "notes-close",
+    async (event: IpcMainEvent, file: string, contents: string) => {
+      logger.log(`closed ${file}`);
+    }
   );
 
   ipcMain.on("notes-new", async (event: IpcMainEvent) => {
@@ -120,7 +136,18 @@ async function initialize(): Promise<void> {
 
     for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send("notes-add", file, "Untitled Note");
-      window.webContents.send("notes-new-finished");
+    }
+  });
+
+  ipcMain.on("notes-delete", async (event: IpcMainEvent, file: string) => {
+    await deleteFile(file);
+
+    delete database.json[file];
+    await database.write();
+
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.webContents.send("notes-remove", file);
+      window.webContents.send("notes-delete-finished");
     }
   });
 
