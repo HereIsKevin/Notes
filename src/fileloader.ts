@@ -108,11 +108,10 @@ async function initialize(): Promise<void> {
       database.json[save[1]] = save[2];
       database.write();
 
-      if (save[0] !== save[1]) {
-        for (let window of BrowserWindow.getAllWindows()) {
-          window.webContents.send("notes-rename", ...save);
-          window.webContents.send("notes-save-finished");
-        }
+      for (let window of BrowserWindow.getAllWindows()) {
+        window.webContents.send("notes-rename", ...save);
+        window.webContents.send("notes-save-finished");
+        console.log("saadsf");
       }
     }
   );

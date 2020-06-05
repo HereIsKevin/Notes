@@ -46,8 +46,6 @@ class NotesEditor extends element.Component {
     this.saving = window.setTimeout(() => {
       this.properties.app.save(this.content);
     }, 500);
-
-    console.log(this.saving)
   }
 
   public render(): string {
