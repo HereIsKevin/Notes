@@ -106,7 +106,7 @@ async function initialize(): Promise<void> {
 
       delete database.json[save[0]];
       database.json[save[1]] = save[2];
-      await database.write();
+      database.write();
 
       if (save[0] !== save[1]) {
         for (let window of BrowserWindow.getAllWindows()) {
@@ -132,7 +132,7 @@ async function initialize(): Promise<void> {
     await newFile(file);
 
     database.json[file] = "Untitled Note";
-    await database.write();
+    database.write();
 
     for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send("notes-add", file, "Untitled Note");
@@ -143,7 +143,7 @@ async function initialize(): Promise<void> {
     await deleteFile(file);
 
     delete database.json[file];
-    await database.write();
+    database.write();
 
     for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send("notes-remove", file);

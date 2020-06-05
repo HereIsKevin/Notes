@@ -41,11 +41,13 @@ class NotesEditor extends element.Component {
       this.content.trim().split("\n")[0] || "Untitled Note"
     );
 
-    clearTimeout(this.saving);
+    window.clearTimeout(this.saving);
 
     this.saving = window.setTimeout(() => {
       this.properties.app.save(this.content);
     }, 1000);
+
+    console.log(this.saving)
   }
 
   public render(): string {
