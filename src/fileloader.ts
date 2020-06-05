@@ -102,7 +102,7 @@ async function initialize(): Promise<void> {
   ipcMain.on(
     "notes-save",
     async (event: IpcMainEvent, file: string, contents: string) => {
-      const save = await saveFile(file, contents);
+      const save: string[] = await saveFile(file, contents);
 
       delete database.json[save[0]];
       database.json[save[1]] = save[2];
@@ -114,13 +114,6 @@ async function initialize(): Promise<void> {
           window.webContents.send("notes-save-finished");
         }
       }
-    }
-  );
-
-  ipcMain.on(
-    "notes-close",
-    async (event: IpcMainEvent, file: string, contents: string) => {
-      logger.log(`closed ${file}`);
     }
   );
 

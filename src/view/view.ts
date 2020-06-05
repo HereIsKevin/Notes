@@ -45,7 +45,7 @@ class NotesEditor extends element.Component {
 
     this.saving = window.setTimeout(() => {
       this.properties.app.save(this.content);
-    }, 1000);
+    }, 500);
 
     console.log(this.saving)
   }
@@ -297,7 +297,7 @@ class NotesApp extends element.Component {
 
   public open(file: string): void {
     if (file !== this.file) {
-      ipcRenderer.send("notes-close", this.file, this.editor.content);
+      this.saved = false;
       this.file = file;
       ipcRenderer.send("notes-open", this.file);
     }
@@ -308,6 +308,7 @@ class NotesApp extends element.Component {
   }
 
   public new(): void {
+    this.saved = false;
     ipcRenderer.send("notes-new");
   }
 
