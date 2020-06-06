@@ -1,0 +1,16 @@
+.notes-editor {
+  background-color: $editor-background;
+  border: none;
+  color: $editor-foreground;
+
+  font: {
+    family: $editor-font-family;
+    size: $editor-font-size;
+  }
+
+  height: 100%;
+  flex-grow: 1;
+  outline: none;
+  resize: none;
+  width: 100%;
+}
