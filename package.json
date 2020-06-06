@@ -8,8 +8,9 @@
     "watch:html": "nodemon --exec 'cp ./src/view/index.html ./build/view/index.html' --ext html --watch ./src/view/",
     "watch:scss": "sass --watch ./src/view/styles/main.scss ./build/view/styles/main.css",
     "watch:ts": "tsc --watch",
-    "build:dev": "tsc; sass ./src/view/styles/main.scss ./build/view/styles/main.css; cp ./src/view/index.html ./build/view/index.html",
-    "build:release": "npm run build:dev; cp ./package.json ./build/package.json; cd ./build/; npm install --only=production; cd ../; electron-packager --overwrite ./build/ --out ./dist/ Notes",
+    "build:fonts": "cp -r ./src/view/fonts/ ./build/view/fonts/",
+    "build:dev": "tsc; sass ./src/view/styles/main.scss ./build/view/styles/main.css; cp ./src/view/index.html ./build/view/index.html; npm run build:fonts",
+    "build:release": "npm run build:dev; npm run build:fonts; cp ./package.json ./build/package.json; cd ./build/; npm install --only=production; cd ../; electron-packager --overwrite ./build/ --out ./dist/ Notes",
     "lint": "npx eslint --ext .ts ./src/"
   },
   "repository": {
