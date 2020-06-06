@@ -111,7 +111,6 @@ async function initialize(): Promise<void> {
       for (let window of BrowserWindow.getAllWindows()) {
         window.webContents.send("notes-rename", ...save);
         window.webContents.send("notes-save-finished");
-        console.log("saadsf");
       }
     }
   );
