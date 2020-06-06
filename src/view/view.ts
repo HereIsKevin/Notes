@@ -16,6 +16,7 @@ class NotesEditor extends element.Component {
     NotesEditor.index++;
 
     this.onInput = element.exportHandler(this.onInput.bind(this));
+    this.onChange = element.exportHandler(this.onChange.bind(this));
   }
 
   public get content(): string {
@@ -45,7 +46,19 @@ class NotesEditor extends element.Component {
 
     this.saving = window.setTimeout(() => {
       this.properties.app.save(this.content);
-    }, 500);
+    }, 2000);
+  }
+
+  public onChange(): void {
+    this.properties.app.rename(
+      this.content.trim().split("\n")[0] || "Untitled Note"
+    );
+
+    window.clearTimeout(this.saving);
+
+    if (!this.properties.app.saved) {
+      this.properties.app.save(this.content);
+    }
   }
 
   public render(): string {
@@ -54,6 +67,7 @@ class NotesEditor extends element.Component {
         id="${this.id}"
         class="notes-editor"
         oninput="${this.onInput()}"
+        onchange="${this.onChange()}"
       ></textarea>
     `;
   }
@@ -62,12 +76,14 @@ class NotesEditor extends element.Component {
 class NotesSidebarItem extends element.Stateless {
   public readonly name: string;
   public readonly file: string;
+  public readonly current: boolean;
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
     this.name = this.properties.name;
     this.file = this.properties.file;
+    this.current = this.properties.current;
 
     this.open = element.exportHandler(this.open.bind(this));
   }
@@ -78,7 +94,9 @@ class NotesSidebarItem extends element.Stateless {
 
   public render(): string {
     return `
-      <div class="notes-sidebar-item" onclick="${this.open()}">
+      <div class="notes-sidebar-item ${
+        this.current ? "notes-sidebar-item-current" : ""
+      }" onclick="${this.open()}">
         <div class="notes-sidebar-item-name">${this.name}</div>
       </div>
     `;
@@ -131,36 +149,9 @@ class NotesSidebar extends element.Component {
   }
 }
 
-class NotesControls extends element.Component {
-  public constructor(properties: element.Dictionary, mount?: element.Mount) {
-    super(properties, mount);
-
-    this.onNew = element.exportHandler(this.onNew.bind(this));
-    this.onDelete = element.exportHandler(this.onDelete.bind(this));
-  }
-
-  public onNew(): void {
-    this.properties.app.new();
-  }
-
-  public onDelete(): void {
-    this.properties.app.delete();
-  }
-
-  public render(): string {
-    return `
-      <div class="notes-controls">
-        <button onclick="${this.onNew()}">New</button>
-        <button onclick="${this.onDelete()}">Delete</button>
-      </div>
-    `;
-  }
-}
-
 class NotesApp extends element.Component {
   private sidebar: NotesSidebar;
   private editor: NotesEditor;
-  private controls: NotesControls;
 
   private file?: string;
   private saved: boolean;
@@ -170,15 +161,55 @@ class NotesApp extends element.Component {
 
     this.sidebar = element.create(NotesSidebar, { app: this });
     this.editor = element.create(NotesEditor, { app: this });
-    this.controls = element.create(NotesControls, { app: this });
 
     this.saved = false;
+
+    ipcRenderer.on("menu", (event: IpcRendererEvent, command: string) => {
+      switch (command) {
+        case "new":
+          this.new();
+          break;
+        case "delete":
+          this.delete();
+          break;
+      }
+    });
 
     ipcRenderer.on(
       "notes-contents",
       (event: IpcRendererEvent, file: string, contents: string) => {
         if (this.file === file) {
+          for (const [index, thing] of this.sidebar.items.entries()) {
+            if (thing.current) {
+              this.sidebar.items.splice(
+                index,
+                1,
+                element.create(NotesSidebarItem, {
+                  name: thing.name,
+                  file: thing.file,
+                  app: this,
+                  current: false,
+                })
+              );
+            }
+          }
+
+          const item = this.sidebar.items.filter(
+            (value: NotesSidebarItem) => value.file === this.file
+          )[0];
+          const index = this.sidebar.items.indexOf(item);
+
           this.editor.content = contents;
+          this.sidebar.items.splice(
+            index,
+            1,
+            element.create(NotesSidebarItem, {
+              name: item.name,
+              file: item.file,
+              app: this,
+              current: true,
+            })
+          );
         }
       }
     );
@@ -191,6 +222,7 @@ class NotesApp extends element.Component {
             name: name,
             file: file,
             app: this,
+            current: false,
           })
         );
 
@@ -220,6 +252,7 @@ class NotesApp extends element.Component {
             name: title,
             file: this.file,
             app: this,
+            current: item.current,
           })
         );
       }
@@ -234,6 +267,7 @@ class NotesApp extends element.Component {
               name: name,
               file: path,
               app: this,
+              current: false,
             })
           );
         }
@@ -289,6 +323,7 @@ class NotesApp extends element.Component {
         name: newName,
         file: this.file,
         app: this,
+        current: item.current,
       })
     );
   }
@@ -313,14 +348,15 @@ class NotesApp extends element.Component {
   public render(): string {
     return this.generate`
       <div class="notes-app">
-        <div class="notes-left-panel">
-          <div class="notes-left-panel-surface">
-            ${this.controls}
-            ${this.sidebar}
+        <div class="notes-surface">
+          <div class="notes-left-panel">
+            <div class="notes-left-panel-surface">
+              ${this.sidebar}
+            </div>
           </div>
-        </div>
-        <div class="notes-center-panel">
-          ${this.editor}
+          <div class="notes-center-panel">
+            ${this.editor}
+          </div>
         </div>
       </div>
     `;
