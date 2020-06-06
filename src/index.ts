@@ -4,8 +4,6 @@ import * as path from "path";
 import * as fileloader from "./fileloader";
 import * as logger from "./logger";
 
-// logger.level(1);
-
 app.name = "Notes";
 app.allowRendererProcessReuse = true;
 
@@ -31,7 +29,28 @@ const template = [
     : []),
   {
     label: "File",
-    submenu: [isMac ? { role: "close" } : { role: "quit" }],
+    submenu: [
+      {
+        label: "New",
+        accelerator: "CmdOrCtrl+N",
+        click: () => {
+          for (const window of BrowserWindow.getAllWindows()) {
+            window.webContents.send("menu", "new");
+          }
+        },
+      },
+      {
+        label: "Delete",
+        accelerator: isMac ? "Cmd+Backspace" : "Ctrl+Delete",
+        click: () => {
+          for (const window of BrowserWindow.getAllWindows()) {
+            window.webContents.send("menu", "delete");
+          }
+        },
+      },
+      { type: "separator" },
+      isMac ? { role: "close" } : { role: "quit" },
+    ],
   },
   {
     label: "Edit",
@@ -99,6 +118,7 @@ const template = [
 class App {
   public constructor() {
     fileloader.initialize();
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
     this.createWindow();
 
@@ -125,7 +145,6 @@ class App {
     });
 
     window.loadFile([app.getAppPath(), "view", "index.html"].join(path.sep));
-    window.setMenu(Menu.buildFromTemplate(template));
   }
 }
 
