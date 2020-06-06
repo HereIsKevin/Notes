@@ -1,0 +1,26 @@
+@each $style, $weight,
+  $src
+    in (
+      (italic, 300, "LightItalic"),
+      (italic, 400, "Italic"),
+      (italic, 600, "SemiBoldItalic"),
+      (italic, 700, "BoldItalic"),
+      (italic, 800, "ExtraBoldItalic"),
+      (normal, 300, "Light"),
+      (normal, 400, "Regular"),
+      (normal, 600, "SemiBold"),
+      (normal, 700, "Bold"),
+      (normal, 800, "ExtraBold")
+    )
+{
+  @font-face {
+    font: {
+      display: swap;
+      family: "Open Sans";
+      style: $style;
+      weight: $weight;
+    }
+
+    src: url("../fonts/OpenSans-#{$src}.ttf") format("ttf");
+  }
+}
