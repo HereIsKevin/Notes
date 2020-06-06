@@ -1,0 +1,62 @@
+body {
+  height: 100vh;
+  width: 100vw;
+}
+
+#root {
+  height: 100%;
+}
+
+.notes-app {
+  display: flex;
+
+  flex: {
+    direction: column;
+    grow: 1;
+  }
+
+  height: 100%;
+}
+
+.notes-surface {
+  display: flex;
+
+  flex: {
+    direction: row;
+    grow: 1;
+  }
+
+  height: 100%;
+}
+
+.notes-left-panel {
+  background-color: $interface-background;
+
+  border-right: {
+    color: $interface-border-color;
+    style: solid;
+    width: $interface-border-width;
+  }
+
+  color: $interface-foreground;
+  display: flex;
+
+  flex: {
+    basis: 200px;
+    grow: 0;
+    shrink: 0;
+  }
+
+  overflow: hidden;
+}
+
+.notes-left-panel-surface {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.notes-center-panel {
+  flex-grow: 1;
+}
