@@ -1,60 +1,7 @@
-* {
-  box-sizing: border-box;
-  outline: none;
-  font-family: sans-serif;
-}
+@import "./config";
+@import "./fonts";
+@import "./normalize";
 
-html,
-body,
-#root,
-.notes-app {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-}
-
-.notes-app {
-  display: flex;
-  flex-direction: row;
-}
-
-.notes-left-panel {
-  flex-basis: 150px;
-  flex-grow: 0;
-  flex-shrink: 0;
-  flex-direction: column;
-  background-color: black;
-  overflow: scroll;
-}
-
-.notes-left-panel-container {
-  width: 150px;
-  position: fixed;
-  top: 0;
-  height: 100%;
-  padding: 0;
-  max-width: 150px;
-  overflow: scroll;
-}
-
-.notes-sidebar {
-  padding: 10px;
-  margin: 0;
-  overflow: scroll;
-}
-
-.notes-sidebar-item {
-  color: white;
-}
-
-.notes-center-panel {
-  flex-grow: 1;
-}
-
-.notes-editor {
-  height: 100%;
-  width: 100%;
-}
+@import "./panels";
+@import "./editor";
+@import "./sidebar";
