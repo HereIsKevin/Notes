@@ -1,0 +1,71 @@
+:root {
+  --color-aqua: #7fdbff;
+  --color-blue: #0074d9;
+  --color-navy: #001f3f;
+  --color-teal: #39cccc;
+  --color-green: #2ecc40;
+  --color-olive: #3d9970;
+  --color-lime: #01ff70;
+  --color-yellow: #ffdc00;
+  --color-orange: #ff851b;
+  --color-red: #ff4136;
+  --color-fuchsia: #f012be;
+  --color-purple: #b10dc9;
+  --color-maroon: #85144b;
+  --color-white: #ffffff;
+  --color-silver: #dddddd;
+  --color-gray: #aaaaaa;
+  --color-black: #111111;
+
+  --interface-background: var(--color-black);
+  --interface-foreground: var(--color-white);
+  --interface-accent-background: var(--color-gray);
+  --interface-accent-foreground: var(--color-white);
+  --interface-border-color: var(--color-black);
+  --interface-border-radius: 5px;
+  --interface-border-width: 1px;
+  --interface-font-family: "Open Sans";
+  --interface-font-size: 14px;
+  --interface-padding: 5px;
+  --interface-margin: 0;
+
+  --editor-background: var(--white);
+  --editor-foreground: var(--black);
+  --editor-font-family: "Open Sans";
+  --editor-font-size: 14px;
+}
+
+$color-aqua: var(--color-aqua);
+$color-blue: var(--color-blue);
+$color-navy: var(--color-navy);
+$color-teal: var(--color-teal);
+$color-green: var(--color-green);
+$color-olive: var(--color-olive);
+$color-lime: var(--color-lime);
+$color-yellow: var(--color-yellow);
+$color-orange: var(--color-orange);
+$color-red: var(--color-red);
+$color-fuchsia: var(--color-fuchsia);
+$color-purple: var(--color-purple);
+$color-maroon: var(--color-maroon);
+$color-white: var(--color-white);
+$color-silver: var(--color-silver);
+$color-gray: var(--color-gray);
+$color-black: var(--color-black);
+
+$interface-background: var(--interface-background);
+$interface-foreground: var(--interface-foreground);
+$interface-accent-background: var(--interface-accent-background);
+$interface-accent-foreground: var(--interface-accent-foreground);
+$interface-border-color: var(--interface-border-color);
+$interface-border-radius: var(--interface-border-radius);
+$interface-border-width: var(--interface-border-width);
+$interface-font-family: var(--interface-font-family);
+$interface-font-size: var(--interface-font-size);
+$interface-padding: var(--interface-padding);
+$interface-margin: var(--interface-margin);
+
+$editor-background: var(--editor-background);
+$editor-foreground: var(--editor-foreground);
+$editor-font-family: var(--editor-font-family);
+$editor-font-size: var(--editor-font-size);
