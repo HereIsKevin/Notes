@@ -6,21 +6,20 @@ import * as path from "path";
 
 import * as fsutils from "./fsutils";
 import { JSONDatabase } from "./jsondatabase";
-import * as logger from "./logger";
 
-const notesPath: string = [os.homedir(), ".notes"].join(path.sep);
-const databasePath: string = [notesPath, "files.json"].join(path.sep);
+const notesPath = [os.homedir(), ".notes"].join(path.sep);
+const databasePath = [notesPath, "files.json"].join(path.sep);
 
 async function generatePath(file: string, original?: string): Promise<string> {
   // index for duplicates
-  let index: number = 1;
+  let index = 1;
   // current path of file
-  let filePath: string = file;
+  let filePath = file;
 
   // constants for parts of file path
-  const dirname: string = path.dirname(file);
-  const extname: string = path.extname(file);
-  const basename: string = path.basename(file, extname);
+  const dirname = path.dirname(file);
+  const extname = path.extname(file);
+  const basename = path.basename(file, extname);
 
   while (await fsutils.exists(filePath)) {
     // prevent replacing of path if it is the original
@@ -47,10 +46,10 @@ async function openFile(file: string): Promise<string> {
 
 async function saveFile(file: string, contents: string): Promise<string[]> {
   // get first non-whitespace line for title, otherwise use "Untitled Note"
-  const title: string =
+  const title =
     contents.trimStart().split("\n", 1)[0] || "Untitled Note";
   // generate new file path ignoring original path
-  const filePath: string = await generatePath(
+  const filePath = await generatePath(
     [notesPath, `${title}.md`].join(path.sep),
     file
   );
@@ -92,9 +91,9 @@ async function initialize(): Promise<void> {
   await database.read();
 
   ipcMain.on("notes-open", async (event: IpcMainEvent, file: string) => {
-    const contents: string = await openFile(file);
+    const contents = await openFile(file);
 
-    for (let window of BrowserWindow.getAllWindows()) {
+    for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send("notes-contents", file, contents);
     }
   });
@@ -102,21 +101,21 @@ async function initialize(): Promise<void> {
   ipcMain.on(
     "notes-save",
     async (event: IpcMainEvent, file: string, contents: string) => {
-      const save: string[] = await saveFile(file, contents);
+      const save = await saveFile(file, contents);
 
       delete database.json[save[0]];
       database.json[save[1]] = save[2];
       database.write();
 
-      for (let window of BrowserWindow.getAllWindows()) {
+      for (const window of BrowserWindow.getAllWindows()) {
         window.webContents.send("notes-rename", ...save);
         window.webContents.send("notes-save-finished");
       }
     }
   );
 
-  ipcMain.on("notes-new", async (event: IpcMainEvent) => {
-    const file: string = await generatePath(
+  ipcMain.on("notes-new", async () => {
+    const file = await generatePath(
       [notesPath, `Untitled Note.md`].join(path.sep)
     );
 
@@ -142,7 +141,7 @@ async function initialize(): Promise<void> {
     }
   });
 
-  ipcMain.on("notes-load", (event: IpcMainEvent) => {
+  ipcMain.on("notes-load", () => {
     for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send("notes-items", Object.entries(database.json));
     }

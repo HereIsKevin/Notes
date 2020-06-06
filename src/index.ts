@@ -1,8 +1,7 @@
-import { shell, app, BrowserWindow, Menu } from "electron";
+import { app, BrowserWindow, Menu } from "electron";
 import * as path from "path";
 
 import * as fileloader from "./fileloader";
-import * as logger from "./logger";
 
 app.name = "Notes";
 app.allowRendererProcessReuse = true;
@@ -104,15 +103,7 @@ const template = [
         : [{ role: "close" }]),
     ],
   },
-  {
-    role: "help",
-    submenu: [
-      {
-        label: "Learn More",
-        click: async () => await shell.openExternal("https://electronjs.org"),
-      },
-    ],
-  },
+  { role: "help" },
 ] as Electron.MenuItemConstructorOptions[];
 
 class App {

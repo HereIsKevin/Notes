@@ -4,10 +4,17 @@ import * as path from "path";
 
 import * as fsutils from "./fsutils";
 
+type JSONArray = Array<
+  string | number | boolean | Date | JSONObject | JSONArray
+>;
+type JSONObject = {
+  [key: string]: string | number | boolean | JSONObject | JSONArray;
+};
+
 class JSONDatabase {
   private file: string;
 
-  public json: any;
+  public json: JSONObject;
 
   public constructor(file: string) {
     this.file = file;

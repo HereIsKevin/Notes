@@ -24,7 +24,7 @@ async function exists(path: string): Promise<boolean> {
 
 async function listDirectory(path: string): Promise<string[] | undefined> {
   try {
-    const files: string[] = await fs.readdir(path);
+    const files = await fs.readdir(path);
     return files;
   } catch {
     logger.error(`failed to read directory ${path}`);
@@ -60,7 +60,7 @@ async function writeFile(path: string, content: string): Promise<void> {
 
 async function readFile(path: string): Promise<string | undefined> {
   try {
-    const content: Buffer = await fs.readFile(path);
+    const content = await fs.readFile(path);
     logger.log(`read ${path}`);
     return content.toString();
   } catch {

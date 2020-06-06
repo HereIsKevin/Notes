@@ -1,7 +1,7 @@
 export { NotesApp };
 
 import { element } from "boredom";
-import { ipcRenderer, IpcRendererEvent, ipcMain } from "electron";
+import { ipcRenderer, IpcRendererEvent } from "electron";
 
 class NotesEditor extends element.Component {
   private readonly id: string;
@@ -20,7 +20,7 @@ class NotesEditor extends element.Component {
   }
 
   public get content(): string {
-    const element: HTMLElement | null = document.getElementById(this.id);
+    const element = document.getElementById(this.id);
 
     if (element instanceof HTMLTextAreaElement) {
       return element.value;
@@ -30,7 +30,7 @@ class NotesEditor extends element.Component {
   }
 
   public set content(value: string) {
-    const element: HTMLElement | null = document.getElementById(this.id);
+    const element = document.getElementById(this.id);
 
     if (element instanceof HTMLTextAreaElement) {
       element.value = value;
@@ -118,8 +118,7 @@ class NotesSidebar extends element.Component {
       set: (
         target: NotesSidebarItem[],
         name: number,
-        value: NotesSidebarItem,
-        receiver: any
+        value: NotesSidebarItem
       ) => {
         target[name] = value;
 
@@ -280,7 +279,7 @@ class NotesApp extends element.Component {
       }
     );
 
-    ipcRenderer.on("notes-save-finished", (event: IpcRendererEvent) => {
+    ipcRenderer.on("notes-save-finished", () => {
       this.saved = false;
     });
 
@@ -292,7 +291,7 @@ class NotesApp extends element.Component {
       }
     });
 
-    ipcRenderer.on("notes-delete-finished", (event: IpcRendererEvent) => {
+    ipcRenderer.on("notes-delete-finished", () => {
       if (this.sidebar.items.length < 1) {
         this.new();
       } else {
