@@ -1,5 +1,10 @@
 .notes-sidebar {
   height: 100%;
+
+  overflow: {
+    x: hidden;
+    y: scroll;
+  }
 }
 
 .notes-sidebar-item {
