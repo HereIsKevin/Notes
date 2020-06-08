@@ -130,12 +130,16 @@ class App {
     const window = new BrowserWindow({
       width: 800,
       height: 600,
+      show: false,
       webPreferences: {
         nodeIntegration: true,
       },
     });
 
     window.loadFile([app.getAppPath(), "view", "index.html"].join(path.sep));
+    window.webContents.on("did-finish-load", () => {
+      window.show();
+    });
   }
 }
 
