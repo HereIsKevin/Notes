@@ -46,8 +46,7 @@ async function openFile(file: string): Promise<string> {
 
 async function saveFile(file: string, contents: string): Promise<string[]> {
   // get first non-whitespace line for title, otherwise use "Untitled Note"
-  const title =
-    contents.trimStart().split("\n", 1)[0] || "Untitled Note";
+  const title = contents.trimStart().split("\n", 1)[0] || "Untitled Note";
   // generate new file path ignoring original path
   const filePath = await generatePath(
     [notesPath, `${title}.md`].join(path.sep),
