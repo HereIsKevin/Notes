@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from "electron";
+import { app, BrowserWindow, dialog, Menu } from "electron";
 import * as path from "path";
 
 import * as fileloader from "./fileloader";
@@ -103,7 +103,20 @@ const template = [
         : [{ role: "close" }]),
     ],
   },
-  { role: "help" },
+  {
+    role: "help",
+    submenu: [
+      {
+        label: "Learn More",
+        click: async () =>
+          dialog.showMessageBox({
+            type: "info",
+            message: "Help Not Available",
+            detail: "Coming soon. Please check again after the next update.",
+          }),
+      },
+    ],
+  },
 ] as Electron.MenuItemConstructorOptions[];
 
 class App {
