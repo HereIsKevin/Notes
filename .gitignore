@@ -108,3 +108,6 @@ build/
 
 # VSCode settings
 .vscode/
+
+# Electron binaries
+Notes-*/
