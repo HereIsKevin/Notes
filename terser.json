@@ -1,6 +1,5 @@
 {
   "warnings": "verbose",
   "mangle": true,
-  "module": true,
   "toplevel": true
 }
