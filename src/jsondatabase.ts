@@ -1,12 +1,10 @@
-export { JSONDatabase };
+export { JSONArray, JSONDatabase, JSONObject };
 
 import * as path from "path";
 
 import * as fsutils from "./fsutils";
 
-type JSONArray = Array<
-  string | number | boolean | Date | JSONObject | JSONArray
->;
+type JSONArray = (string | number | boolean | JSONObject | JSONArray)[];
 type JSONObject = {
   [key: string]: string | number | boolean | JSONObject | JSONArray;
 };
