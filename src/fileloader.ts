@@ -1,14 +1,13 @@
 export { initialize };
 
-import { BrowserWindow, ipcMain, IpcMainEvent } from "electron";
+import * as fsutils from "./fsutils";
 import * as os from "os";
 import * as path from "path";
-
-import * as fsutils from "./fsutils";
-import { JSONDatabase } from "./jsondatabase";
+import { BrowserWindow, IpcMainEvent, ipcMain } from "electron";
+import { Database } from "./database";
 
 const notesPath = [os.homedir(), ".notes"].join(path.sep);
-const databasePath = [notesPath, "files.json"].join(path.sep);
+const databasePath = [notesPath, "notes.json"].join(path.sep);
 
 async function generatePath(file: string, original?: string): Promise<string> {
   // index for duplicates
@@ -44,7 +43,7 @@ async function openFile(file: string): Promise<string> {
   return (await fsutils.readFile(file)) || "";
 }
 
-async function saveFile(file: string, contents: string): Promise<string[]> {
+async function saveFile(file: string, contents: string): Promise<[string, string, string]> {
   // get first non-whitespace line for title, otherwise use "Untitled Note"
   const title = contents.trimStart().split("\n", 1)[0] || "Untitled Note";
   // generate new file path ignoring original path
@@ -86,7 +85,7 @@ async function deleteFile(file: string): Promise<void> {
 }
 
 async function initialize(): Promise<void> {
-  const database = new JSONDatabase(databasePath);
+  const database = new Database(databasePath);
   await database.read();
 
   ipcMain.on("notes-open", async (event: IpcMainEvent, file: string) => {
@@ -102,8 +101,7 @@ async function initialize(): Promise<void> {
     async (event: IpcMainEvent, file: string, contents: string) => {
       const save = await saveFile(file, contents);
 
-      delete database.json[save[0]];
-      database.json[save[1]] = save[2];
+      database.renameFile(...save);
       database.write();
 
       for (const window of BrowserWindow.getAllWindows()) {
@@ -120,7 +118,7 @@ async function initialize(): Promise<void> {
 
     await newFile(file);
 
-    database.json[file] = "Untitled Note";
+    database.newFile(file, "Untitled Note");
     database.write();
 
     for (const window of BrowserWindow.getAllWindows()) {
@@ -131,7 +129,7 @@ async function initialize(): Promise<void> {
   ipcMain.on("notes-delete", async (event: IpcMainEvent, file: string) => {
     await deleteFile(file);
 
-    delete database.json[file];
+    database.deleteFile(file);
     database.write();
 
     for (const window of BrowserWindow.getAllWindows()) {
@@ -142,7 +140,7 @@ async function initialize(): Promise<void> {
 
   ipcMain.on("notes-load", () => {
     for (const window of BrowserWindow.getAllWindows()) {
-      window.webContents.send("notes-items", Object.entries(database.json));
+      window.webContents.send("notes-items", database.json.files);
     }
   });
 }
