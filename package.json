@@ -7,6 +7,11 @@
     "clean:build": "shx rm -rf ./build/",
     "clean:dist": "shx rm -rf ./dist/",
     "clean": "npm-run-all --parallel clean:build clean:dist",
+    "watch:html": "nodemon --exec 'npm run build:html' --ext html --watch ./src/view/",
+    "watch:sass": "sass --watch ./src/view/styles/main.scss ./build/view/styles/main.css",
+    "watch:tsc": "tsc --watch",
+    "watch:bundle": "webpack --watch",
+    "watch": "npm-run-all --sequential build:development --parallel watch:html watch:sass watch:tsc watch:bundle",
     "build:html": "shx cp ./src/view/index.html ./build/view/index.html",
     "build:sass": "sass ./src/view/styles/main.scss ./build/view/styles/main.css",
     "build:tsc": "tsc",
@@ -25,7 +30,11 @@
     "build:copy:html": "shx cp -r ./build/view/index.html ./dist/view/index.html",
     "build:copy:package": "shx cp -r ./package.json ./dist/package.json",
     "build:copy": "npm-run-all --parallel build:copy:fonts build:copy:html build:copy:package",
-    "build:release": "npm-run-all --sequential build:development build:minify build:copy build:binary"
+    "build:release": "npm-run-all --sequential build:development build:minify build:copy build:binary",
+    "lint": "eslint --ext .ts ./src/",
+    "electron": "electron ./build/",
+    "format:check": "prettier --check ./src/",
+    "format:write": "prettier --write ./src/"
   },
   "repository": {
     "type": "git",
@@ -50,6 +59,7 @@
     "eslint": "^7.2.0",
     "nodemon": "^2.0.4",
     "npm-run-all": "^4.1.5",
+    "prettier": "^2.0.5",
     "sass": "^1.26.8",
     "shx": "^0.3.2",
     "terser": "^4.7.0",
