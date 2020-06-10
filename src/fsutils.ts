@@ -6,10 +6,11 @@ export {
   writeFile,
   readFile,
   deleteFile,
+  stats,
 };
 
 import * as logger from "./logger";
-import { promises as fs, constants as fsConstants } from "fs";
+import { promises as fs, constants as fsConstants, Stats } from "fs";
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -63,7 +64,6 @@ async function readFile(path: string): Promise<string | undefined> {
     return content.toString();
   } catch {
     logger.error(`failed to read ${path}`);
-    return undefined;
   }
 }
 
@@ -73,5 +73,14 @@ async function deleteFile(path: string): Promise<void> {
     logger.log(`deleted ${path}`);
   } catch {
     logger.error(`failed to delete ${path}`);
+  }
+}
+
+async function stats(path: string): Promise<Stats | undefined> {
+  try {
+    const fileStats = await fs.stat(path);
+    return fileStats;
+  } catch {
+    logger.error(`failed to get stats for ${path}`);
   }
 }
