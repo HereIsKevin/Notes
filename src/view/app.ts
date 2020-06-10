@@ -1,5 +1,5 @@
-import { element } from "boredom";
 import { NotesApp } from "./view";
+import { element } from "boredom";
 
 const root = document.getElementById("root");
 const app = element.create(NotesApp);

@@ -1,7 +1,6 @@
-import { app, BrowserWindow, dialog, Menu } from "electron";
-import * as path from "path";
-
 import * as fileloader from "./fileloader";
+import * as path from "path";
+import { BrowserWindow, Menu, app, dialog } from "electron";
 
 app.name = "Notes";
 app.allowRendererProcessReuse = true;

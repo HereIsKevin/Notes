@@ -1,7 +1,7 @@
 export { NotesApp };
 
+import { IpcRendererEvent, ipcRenderer } from "electron";
 import { element } from "boredom";
-import { ipcRenderer, IpcRendererEvent } from "electron";
 
 class NotesEditor extends element.Component {
   private readonly id: string;

@@ -8,10 +8,8 @@ export {
   deleteFile,
 };
 
-import { promises as fs } from "fs";
-import { constants as fsConstants } from "fs";
-
 import * as logger from "./logger";
+import { promises as fs, constants as fsConstants } from "fs";
 
 async function exists(path: string): Promise<boolean> {
   try {
