@@ -43,7 +43,10 @@ async function openFile(file: string): Promise<string> {
   return (await fsutils.readFile(file)) || "";
 }
 
-async function saveFile(file: string, contents: string): Promise<[string, string, string]> {
+async function saveFile(
+  file: string,
+  contents: string
+): Promise<[string, string, string]> {
   // get first non-whitespace line for title, otherwise use "Untitled Note"
   const title = contents.trimStart().split("\n", 1)[0] || "Untitled Note";
   // generate new file path ignoring original path
@@ -143,4 +146,17 @@ async function initialize(): Promise<void> {
       window.webContents.send("notes-items", database.json.files);
     }
   });
+
+  ipcMain.on(
+    "notes-sort",
+    async (event: IpcMainEvent, by: "title" | "time") => {
+      database.json.config.sortBy = by;
+      await database.sortFiles();
+      database.write();
+
+      for (const window of BrowserWindow.getAllWindows()) {
+        window.webContents.send("notes-items", database.json.files);
+      }
+    }
+  );
 }
