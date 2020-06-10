@@ -3,12 +3,20 @@ export { Database, INotesDatabase };
 import * as fsutils from "./fsutils";
 import * as path from "path";
 
+interface INotesConfig {
+  sortBy: "title" | "time";
+}
+
 interface INotesDatabase {
   files: [string, string][];
+  config: INotesConfig;
 }
 
 const emptyDatabase: INotesDatabase = {
   files: [],
+  config: {
+    sortBy: "title",
+  },
 };
 
 class Database {
@@ -92,5 +100,49 @@ class Database {
 
   public newFile(newPath: string, title: string): void {
     this.json.files.push([newPath, title]);
+  }
+
+  public async sortFiles(): Promise<void> {
+    let sortFunction;
+
+    if (this.json.config.sortBy === "title") {
+      sortFunction = (x: [string, string], y: [string, string]) => {
+        const titleX = x[1];
+        const titleY = y[1];
+
+        if (titleX < titleY) {
+          return -1;
+        } else if (titleX > titleY) {
+          return 1;
+        } else {
+          return 0;
+        }
+      };
+    } else if (this.json.config.sortBy === "time") {
+      let stats: (Date | undefined)[] = [];
+
+      for (const file of this.json.files) {
+        const stat = await fsutils.stats(file[0]);
+        stats.push(typeof stat === "undefined" ? undefined : stat.mtime);
+      }
+
+      sortFunction = (x: [string, string], y: [string, string]) => {
+        const statX = stats[this.json.files.indexOf(x)];
+        const statY = stats[this.json.files.indexOf(y)];
+
+        if (typeof statX === "undefined" || typeof statY === "undefined") {
+          return 0;
+        }
+        if (statX < statY) {
+          return -1;
+        } else if (statX > statY) {
+          return 1;
+        } else {
+          return 0;
+        }
+      };
+    }
+
+    this.json.files.sort(sortFunction);
   }
 }
