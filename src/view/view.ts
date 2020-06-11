@@ -103,7 +103,7 @@ class NotesSidebarItem extends element.Component {
     return `
       <div class="notes-sidebar-item ${
         this.state.opened ? "notes-sidebar-item-current" : ""
-      }" onclick="${this.open()}">
+      }" ondblclick="${this.open()}">
         <div class="notes-sidebar-item-name">${this.state.title}</div>
       </div>
     `;
