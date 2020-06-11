@@ -105,11 +105,12 @@ async function initialize(): Promise<void> {
       const save = await saveFile(file, contents);
 
       database.renameFile(...save);
+      database.editedFile(save[1], save[2]);
       database.write();
 
       for (const window of BrowserWindow.getAllWindows()) {
         window.webContents.send("notes-rename", ...save);
-        window.webContents.send("notes-save-finished");
+        window.webContents.send("notes-written");
       }
     }
   );
@@ -122,6 +123,7 @@ async function initialize(): Promise<void> {
     await newFile(file);
 
     database.newFile(file, "Untitled Note");
+    database.editedFile(file, "Untitled Note");
     database.write();
 
     for (const window of BrowserWindow.getAllWindows()) {
@@ -137,7 +139,7 @@ async function initialize(): Promise<void> {
 
     for (const window of BrowserWindow.getAllWindows()) {
       window.webContents.send("notes-remove", file);
-      window.webContents.send("notes-delete-finished");
+      window.webContents.send("notes-deleted");
     }
   });
 
@@ -146,17 +148,4 @@ async function initialize(): Promise<void> {
       window.webContents.send("notes-items", database.json.files);
     }
   });
-
-  ipcMain.on(
-    "notes-sort",
-    async (event: IpcMainEvent, by: "title" | "time") => {
-      database.json.config.sortBy = by;
-      await database.sortFiles();
-      database.write();
-
-      for (const window of BrowserWindow.getAllWindows()) {
-        window.webContents.send("notes-items", database.json.files);
-      }
-    }
-  );
 }
