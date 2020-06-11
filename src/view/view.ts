@@ -1,6 +1,6 @@
 export { NotesApp };
 
-import { IpcRendererEvent, ipcRenderer } from "electron";
+import { IpcRendererEvent, ipcRenderer, TouchBarSlider } from "electron";
 import { element } from "boredom";
 
 class NotesEditor extends element.Component {
@@ -19,7 +19,7 @@ class NotesEditor extends element.Component {
     this.onChange = element.exportHandler(this.onChange.bind(this));
   }
 
-  public get content(): string {
+  public get contents(): string {
     const element = document.getElementById(this.id);
 
     if (element instanceof HTMLTextAreaElement) {
@@ -29,7 +29,7 @@ class NotesEditor extends element.Component {
     }
   }
 
-  public set content(value: string) {
+  public set contents(value: string) {
     const element = document.getElementById(this.id);
 
     if (element instanceof HTMLTextAreaElement) {
@@ -38,26 +38,26 @@ class NotesEditor extends element.Component {
   }
 
   public onInput(): void {
-    this.properties.app.rename(
-      this.content.trim().split("\n")[0] || "Untitled Note"
+    this.properties.app.editFile(
+      this.contents.trim().split("\n")[0] || "Untitled Note"
     );
 
     window.clearTimeout(this.saving);
 
     this.saving = window.setTimeout(() => {
-      this.properties.app.save(this.content);
+      this.properties.app.saveFile(this.contents);
     }, 2000);
   }
 
   public onChange(): void {
-    this.properties.app.rename(
-      this.content.trim().split("\n")[0] || "Untitled Note"
+    this.properties.app.editFile(
+      this.contents.trim().split("\n")[0] || "Untitled Note"
     );
 
     window.clearTimeout(this.saving);
 
     if (!this.properties.app.saved) {
-      this.properties.app.save(this.content);
+      this.properties.app.saveFile(this.contents);
     }
   }
 
@@ -73,76 +73,115 @@ class NotesEditor extends element.Component {
   }
 }
 
-class NotesSidebarItem extends element.Stateless {
-  public readonly name: string;
-  public readonly file: string;
-  public readonly current: boolean;
+interface INotesSidebarItemState {
+  title: string;
+  opened: boolean;
+}
+
+class NotesSidebarItem extends element.Component {
+  public state: INotesSidebarItemState;
+  public file: string;
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
-    this.name = this.properties.name;
     this.file = this.properties.file;
-    this.current = this.properties.current;
+
+    this.state = {
+      title: this.properties.title,
+      opened: this.properties.opened,
+    };
 
     this.open = element.exportHandler(this.open.bind(this));
   }
 
   public open(): void {
-    this.properties.app.open(this.file);
+    this.properties.app.openFile(this.file);
   }
 
   public render(): string {
     return `
       <div class="notes-sidebar-item ${
-        this.current ? "notes-sidebar-item-current" : ""
+        this.state.opened ? "notes-sidebar-item-current" : ""
       }" onclick="${this.open()}">
-        <div class="notes-sidebar-item-name">${this.name}</div>
+        <div class="notes-sidebar-item-name">${this.state.title}</div>
       </div>
     `;
   }
 }
 
+interface INotesSidebarState {
+  items: NotesSidebarItem[];
+}
+
 class NotesSidebar extends element.Component {
-  private internalItems: NotesSidebarItem[];
+  public state: INotesSidebarState;
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
-    this.internalItems = [];
+    this.state = {
+      items: [],
+    };
   }
 
-  public get items(): NotesSidebarItem[] {
-    return new Proxy(this.internalItems, {
-      get: (target: NotesSidebarItem[], name: number) => target[name],
-      set: (
-        target: NotesSidebarItem[],
-        name: number,
-        value: NotesSidebarItem
-      ) => {
-        target[name] = value;
-
-        if (this.rendered) {
-          this.paint();
-        }
-
-        return true;
-      },
-    });
-  }
-
-  public set items(value: NotesSidebarItem[]) {
-    this.internalItems = value;
+  public loadItems(items: [string, string][]): void {
+    this.state.items = items.map((item: [string, string]) =>
+      element.create(NotesSidebarItem, {
+        title: item[1],
+        file: item[0],
+        opened: false,
+        app: this.properties.app,
+      })
+    );
 
     if (this.rendered) {
       this.paint();
     }
   }
 
+  public newItem(file: string, title: string, opened: boolean = false): void {
+    this.state.items.splice(
+      0,
+      0,
+      element.create(NotesSidebarItem, {
+        title: title,
+        file: file,
+        opened: opened,
+        app: this.properties.app,
+      })
+    );
+
+    if (this.rendered) {
+      this.paint();
+    }
+  }
+
+  public deleteItem(file: string): void {
+    for (const item of this.state.items) {
+      const index = this.state.items.indexOf(item);
+
+      if (item.file === file && index !== -1) {
+        this.state.items.splice(index, 1);
+      }
+    }
+
+    if (this.rendered) {
+      this.paint();
+    }
+  }
+
+  public editItem(file: string, title: string): void {
+    this.deleteItem(file);
+    this.newItem(file, title, true);
+  }
+
   public render(): string {
     return this.generate`
       <div class="notes-sidebar">
-        ${this.items.map((x: NotesSidebarItem) => this.generate`${x}`).join("")}
+        ${this.state.items
+          .map((x: NotesSidebarItem) => this.generate`${x}`)
+          .join("")}
       </div>
     `;
   }
@@ -163,171 +202,133 @@ class NotesApp extends element.Component {
 
     this.saved = false;
 
-    ipcRenderer.on("menu", (event: IpcRendererEvent, command: string) => {
-      switch (command) {
-        case "new":
-          this.new();
-          break;
-        case "delete":
-          this.delete();
-          break;
-      }
-    });
-
     ipcRenderer.on(
       "notes-contents",
-      (event: IpcRendererEvent, file: string, contents: string) => {
-        if (this.file === file) {
-          for (const [index, thing] of this.sidebar.items.entries()) {
-            if (thing.current) {
-              this.sidebar.items.splice(
-                index,
-                1,
-                element.create(NotesSidebarItem, {
-                  name: thing.name,
-                  file: thing.file,
-                  app: this,
-                  current: false,
-                })
-              );
-            }
-          }
-
-          const item = this.sidebar.items.filter(
-            (value: NotesSidebarItem) => value.file === this.file
-          )[0];
-          const index = this.sidebar.items.indexOf(item);
-
-          this.editor.content = contents;
-          this.sidebar.items.splice(
-            index,
-            1,
-            element.create(NotesSidebarItem, {
-              name: item.name,
-              file: item.file,
-              app: this,
-              current: true,
-            })
-          );
-        }
-      }
+      (event: IpcRendererEvent, file: string, contents: string) =>
+        this.onContents(file, contents)
     );
-
-    ipcRenderer.on(
-      "notes-add",
-      (event: IpcRendererEvent, file: string, name: string) => {
-        this.sidebar.items.push(
-          element.create(NotesSidebarItem, {
-            name: name,
-            file: file,
-            app: this,
-            current: false,
-          })
-        );
-
-        this.open(file);
-      }
-    );
-
     ipcRenderer.on(
       "notes-rename",
       (
         event: IpcRendererEvent,
-        oldPath: string,
-        newPath: string,
+        oldFile: string,
+        newFile: string,
         title: string
-      ) => {
-        const item = this.sidebar.items.filter(
-          (value: NotesSidebarItem) => value.file === this.file
-        )[0];
-        const index = this.sidebar.items.indexOf(item);
-
-        this.file = newPath;
-
-        this.sidebar.items.splice(
-          index,
-          1,
-          element.create(NotesSidebarItem, {
-            name: title,
-            file: this.file,
-            app: this,
-            current: item.current,
-          })
-        );
-      }
+      ) => this.onRename(oldFile, newFile, title)
     );
-
+    ipcRenderer.on(
+      "notes-add",
+      (event: IpcRendererEvent, file: string, title: string) =>
+        this.onAdd(file, title)
+    );
+    ipcRenderer.on("notes-remove", (event: IpcRendererEvent, file: string) =>
+      this.onRemove(file)
+    );
     ipcRenderer.on(
       "notes-items",
-      (event: IpcRendererEvent, items: [string, string][]) => {
-        for (const [path, name] of items) {
-          this.sidebar.items.push(
-            element.create(NotesSidebarItem, {
-              name: name,
-              file: path,
-              app: this,
-              current: false,
-            })
-          );
-        }
-
-        if (items.length < 1) {
-          this.new();
-        } else {
-          this.open(items[0][0]);
-        }
-      }
+      (event: IpcRendererEvent, files: [string, string][]) =>
+        this.onItems(files)
     );
-
-    ipcRenderer.on("notes-save-finished", () => {
-      this.saved = false;
-    });
-
-    ipcRenderer.on("notes-remove", (event: IpcRendererEvent, path: string) => {
-      for (const item of this.sidebar.items.filter(
-        (x: NotesSidebarItem) => x.file === path
-      )) {
-        this.sidebar.items.splice(this.sidebar.items.indexOf(item), 1);
-      }
-    });
-
-    ipcRenderer.on("notes-delete-finished", () => {
-      if (this.sidebar.items.length < 1) {
-        this.new();
+    ipcRenderer.on("notes-menu", (event: IpcRendererEvent, command: string) =>
+      this.onMenu(command)
+    );
+    ipcRenderer.on(
+      "notes-written",
+      (event: IpcRendererEvent) => (this.saved = false)
+    );
+    ipcRenderer.on("notes-deleted", () => {
+      console.log("deletion")
+      if (this.sidebar.state.items.length === 0) {
+        this.newFile();
       } else {
-        this.open(this.sidebar.items[0].file);
+        this.openFile(this.sidebar.state.items[0].file);
       }
     });
 
-    ipcRenderer.send("notes-load");
+    this.loadFiles();
   }
 
-  public save(contents: string): void {
-    if (!this.saved) {
-      this.saved = true;
-      ipcRenderer.send("notes-save", this.file, contents);
+  public onContents(file: string, contents: string): void {
+    if (this.file === file) {
+      this.editor.contents = contents;
+
+      for (const item of this.sidebar.state.items) {
+        if (item.file === file) {
+          item.state.opened = true;
+        } else {
+          item.state.opened = false;
+        }
+      }
     }
   }
 
-  public rename(newName: string): void {
-    const item = this.sidebar.items.filter(
-      (value: NotesSidebarItem) => value.file === this.file
-    )[0];
-    const index = this.sidebar.items.indexOf(item);
+  public onRename(oldFile: string, newFile: string, title: string): void {
+    if (this.file === oldFile) {
+      this.file = newFile;
+    }
 
-    this.sidebar.items.splice(
-      index,
-      1,
-      element.create(NotesSidebarItem, {
-        name: newName,
-        file: this.file,
-        app: this,
-        current: item.current,
-      })
-    );
+    for (const item of this.sidebar.state.items) {
+      if (item.file === oldFile) {
+        item.file = newFile;
+        item.state.title = title;
+        item.state.opened = true;
+      }
+    }
   }
 
-  public open(file: string): void {
+  public onAdd(file: string, title: string) {
+    this.sidebar.newItem(file, title);
+    this.openFile(file);
+  }
+
+  public onRemove(file: string) {
+    this.sidebar.deleteItem(file);
+  }
+
+  public onItems(files: [string, string][]) {
+    this.sidebar.loadItems(files);
+
+    if (files.length < 1) {
+      this.newFile();
+    } else {
+      this.openFile(files[0][0]);
+    }
+  }
+
+  public onMenu(command: string): void {
+    switch (command) {
+      case "new":
+        this.newFile();
+        break;
+      case "delete":
+        this.deleteFile();
+        break;
+    }
+  }
+
+  public newFile(): void {
+    this.saved = false;
+    ipcRenderer.send("notes-new");
+  }
+
+  public deleteFile(): void {
+    if (typeof this.file !== "undefined") {
+      ipcRenderer.send("notes-delete", this.file);
+    }
+  }
+
+  public saveFile(): void {
+    if (typeof this.file !== "undefined" && !this.saved) {
+      this.saved = true;
+      ipcRenderer.send("notes-save", this.file, this.editor.contents);
+    }
+  }
+
+  public loadFiles(): void {
+    ipcRenderer.send("notes-load");
+  }
+
+  public openFile(file: string): void {
     if (file !== this.file) {
       this.saved = false;
       this.file = file;
@@ -335,13 +336,10 @@ class NotesApp extends element.Component {
     }
   }
 
-  public delete(): void {
-    ipcRenderer.send("notes-delete", this.file);
-  }
-
-  public new(): void {
-    this.saved = false;
-    ipcRenderer.send("notes-new");
+  public editFile(title: string): void {
+    if (typeof this.file !== "undefined") {
+      this.sidebar.editItem(this.file, title);
+    }
   }
 
   public render(): string {
