@@ -33,7 +33,7 @@ const template = [
         accelerator: "CmdOrCtrl+N",
         click: () => {
           for (const window of BrowserWindow.getAllWindows()) {
-            window.webContents.send("menu", "new");
+            window.webContents.send("notes-menu", "new");
           }
         },
       },
@@ -42,7 +42,7 @@ const template = [
         accelerator: isMac ? "Cmd+Backspace" : "Ctrl+Delete",
         click: () => {
           for (const window of BrowserWindow.getAllWindows()) {
-            window.webContents.send("menu", "delete");
+            window.webContents.send("notes-menu", "delete");
           }
         },
       },
