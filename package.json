@@ -47,7 +47,7 @@
   },
   "homepage": "https://github.com/HereIsKevin/Notes#readme",
   "dependencies": {
-    "boredom": "https://github.com/HereIsKevin/boreDOM/releases/download/v0.3.1/boredom-0.3.1.tgz"
+    "boredom": "https://github.com/HereIsKevin/boreDOM/releases/download/v0.3.2/boredom-0.3.2.tgz"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^3.2.0",
