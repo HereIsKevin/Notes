@@ -3,8 +3,10 @@
 
   overflow: {
     x: hidden;
-    y: scroll;
+    y: auto;
   }
+
+  user-select: none;
 }
 
 .notes-sidebar-item {
