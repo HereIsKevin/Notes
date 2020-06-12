@@ -1,11 +1,19 @@
 import * as fileloader from "./fileloader";
 import * as path from "path";
-import { BrowserWindow, Menu, app, dialog } from "electron";
+import {
+  BrowserWindow,
+  IpcMainEvent,
+  Menu,
+  app,
+  dialog,
+  ipcMain,
+} from "electron";
 
 app.name = "Notes";
 app.allowRendererProcessReuse = true;
 
 const isMac = process.platform === "darwin";
+
 const template = [
   ...(isMac
     ? [
@@ -135,6 +143,21 @@ class App {
       if (process.platform !== "darwin") {
         app.quit();
       }
+    });
+
+    ipcMain.on("notes-sidebar-menu", (event: IpcMainEvent, file: string) => {
+      Menu.buildFromTemplate([
+        {
+          label: "Delete",
+          click: async () => {
+            const window = BrowserWindow.getFocusedWindow();
+
+            if (window) {
+              window.webContents.send("notes-call", "notes-delete", file);
+            }
+          },
+        },
+      ]).popup();
     });
   }
 

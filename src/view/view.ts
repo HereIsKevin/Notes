@@ -92,18 +92,26 @@ class NotesSidebarItem extends element.Component {
       opened: this.properties.opened,
     };
 
-    this.open = element.exportHandler(this.open.bind(this));
+    this.onDoubleClick = element.exportHandler(this.onDoubleClick.bind(this));
+    this.onContextMenu = element.exportHandler(this.onContextMenu.bind(this));
   }
 
-  public open(): void {
+  public onDoubleClick(): void {
     this.properties.app.openFile(this.file);
+  }
+
+  public onContextMenu(): void {
+    this.properties.app.sidebarContextMenu(this.file);
   }
 
   public render(): string {
     return `
-      <div class="notes-sidebar-item ${
-        this.state.opened ? "notes-sidebar-item-current" : ""
-      }" ondblclick="${this.open()}">
+      <div
+        class="notes-sidebar-item
+        ${this.state.opened ? "notes-sidebar-item-current" : ""}"
+        ondblclick="${this.onDoubleClick()}"
+        oncontextmenu="${this.onContextMenu()}"
+      >
         <div class="notes-sidebar-item-name">${this.state.title}</div>
       </div>
     `;
@@ -237,13 +245,19 @@ class NotesApp extends element.Component {
       (event: IpcRendererEvent) => (this.saved = false)
     );
     ipcRenderer.on("notes-deleted", () => {
-      console.log("deletion")
+      console.log("deletion");
       if (this.sidebar.state.items.length === 0) {
         this.newFile();
       } else {
         this.openFile(this.sidebar.state.items[0].file);
       }
     });
+    ipcRenderer.on(
+      "notes-call",
+      (event: IpcRendererEvent, channel: string, ...args: any[]) => {
+        ipcRenderer.send(channel, ...args);
+      }
+    );
 
     this.loadFiles();
   }
@@ -340,6 +354,10 @@ class NotesApp extends element.Component {
     if (typeof this.file !== "undefined") {
       this.sidebar.editItem(this.file, title);
     }
+  }
+
+  public sidebarContextMenu(file: string): void {
+    ipcRenderer.send("notes-sidebar-menu", file);
   }
 
   public render(): string {
