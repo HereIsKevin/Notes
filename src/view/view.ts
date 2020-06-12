@@ -1,6 +1,6 @@
 export { NotesApp };
 
-import { IpcRendererEvent, ipcRenderer, TouchBarSlider } from "electron";
+import { IpcRendererEvent, ipcRenderer } from "electron";
 import { element } from "boredom";
 
 class NotesEditor extends element.Component {
