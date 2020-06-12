@@ -21,6 +21,6 @@
       weight: $weight;
     }
 
-    src: url("../fonts/OpenSans-#{$src}.ttf") format("ttf");
+    src: url("../fonts/OpenSans-#{$src}.ttf") format("truetype");
   }
 }
