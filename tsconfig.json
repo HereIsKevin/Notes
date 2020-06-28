@@ -3,7 +3,8 @@
     "outDir": "build",
     "target": "esnext",
     "strict": true,
-    "module": "commonjs"
+    "module": "commonjs",
+    "experimentalDecorators": true
   },
   "include": ["./src/"]
 }
