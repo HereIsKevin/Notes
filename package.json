@@ -19,7 +19,7 @@
     "build:bundle": "webpack",
     "build:minify:app": "terser --config-file ./terser.json --output ./dist/index.min.js -- ./build/index.min.js",
     "build:minify:view": "terser --config-file ./terser.json --output ./dist/view/app.min.js -- ./build/view/app.min.js",
-    "build:minify:styles": "cleancss --output ./dist/view/styles/main.css --level 2 ./build/view/styles/main.css",
+    "build:minify:styles": "cleancss --output ./dist/view/styles/main.css --level 2 --skip-rebase ./build/view/styles/main.css",
     "build:mkdir:styles": "shx mkdir -p ./dist/view/styles/",
     "build:mkdir:view": "shx mkdir -p ./dist/view/",
     "build:mkdir:app": "shx mkdir -p ./dist/",
