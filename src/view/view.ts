@@ -91,7 +91,6 @@ interface INotesSidebarItemState extends element.Dictionary {
 }
 
 class NotesSidebarItem extends element.Component {
-  public state: INotesSidebarItemState;
   public file: string;
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
@@ -118,6 +117,14 @@ class NotesSidebarItem extends element.Component {
 
     this.onDoubleClick = element.exportHandler(this.onDoubleClick.bind(this));
     this.onContextMenu = element.exportHandler(this.onContextMenu.bind(this));
+  }
+
+  public get state(): INotesSidebarItemState {
+    return super.state as INotesSidebarItemState;
+  }
+
+  public set state(value: INotesSidebarItemState) {
+    super.state = value;
   }
 
   public onDoubleClick(): void {
@@ -155,14 +162,20 @@ interface INotesSidebarState extends element.Dictionary {
 }
 
 class NotesSidebar extends element.Component {
-  public state: INotesSidebarState;
-
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
     this.state = {
       items: [],
     };
+  }
+
+  public get state(): INotesSidebarState {
+    return super.state as INotesSidebarState;
+  }
+
+  public set state(value: INotesSidebarState) {
+    super.state = value;
   }
 
   public loadItems(items: [string, string][]): void {
