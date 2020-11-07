@@ -38,6 +38,10 @@ class NotesEditor extends element.Component {
   }
 
   public onInput(): void {
+    if (!(this.properties.app instanceof NotesApp)) {
+      throw new TypeError("app must be NotesApp");
+    }
+
     this.properties.app.editFile(
       this.contents.trim().split("\n")[0] || "Untitled Note"
     );
@@ -45,11 +49,19 @@ class NotesEditor extends element.Component {
     window.clearTimeout(this.saving);
 
     this.saving = window.setTimeout(() => {
-      this.properties.app.saveFile(this.contents);
+      if (!(this.properties.app instanceof NotesApp)) {
+        throw new TypeError("app must be NotesApp");
+      }
+
+      this.properties.app.saveFile();
     }, 2000);
   }
 
   public onChange(): void {
+    if (!(this.properties.app instanceof NotesApp)) {
+      throw new TypeError("app must be NotesApp");
+    }
+
     this.properties.app.editFile(
       this.contents.trim().split("\n")[0] || "Untitled Note"
     );
@@ -57,7 +69,7 @@ class NotesEditor extends element.Component {
     window.clearTimeout(this.saving);
 
     if (!this.properties.app.saved) {
-      this.properties.app.saveFile(this.contents);
+      this.properties.app.saveFile();
     }
   }
 
@@ -73,7 +85,7 @@ class NotesEditor extends element.Component {
   }
 }
 
-interface INotesSidebarItemState {
+interface INotesSidebarItemState extends element.Dictionary {
   title: string;
   opened: boolean;
 }
@@ -85,7 +97,19 @@ class NotesSidebarItem extends element.Component {
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
+    if (typeof this.properties.file !== "string") {
+      throw new TypeError("file property must be a string");
+    }
+
     this.file = this.properties.file;
+
+    if (typeof this.properties.title !== "string") {
+      throw new TypeError("file property must be a string");
+    }
+
+    if (typeof this.properties.opened !== "boolean") {
+      throw new TypeError("file property must be a boolean");
+    }
 
     this.state = {
       title: this.properties.title,
@@ -97,10 +121,18 @@ class NotesSidebarItem extends element.Component {
   }
 
   public onDoubleClick(): void {
+    if (!(this.properties.app instanceof NotesApp)) {
+      throw new TypeError("app must be NotesApp");
+    }
+
     this.properties.app.openFile(this.file);
   }
 
   public onContextMenu(): void {
+    if (!(this.properties.app instanceof NotesApp)) {
+      throw new TypeError("app must be NotesApp");
+    }
+
     this.properties.app.sidebarContextMenu(this.file);
   }
 
@@ -118,7 +150,7 @@ class NotesSidebarItem extends element.Component {
   }
 }
 
-interface INotesSidebarState {
+interface INotesSidebarState extends element.Dictionary {
   items: NotesSidebarItem[];
 }
 
@@ -134,14 +166,17 @@ class NotesSidebar extends element.Component {
   }
 
   public loadItems(items: [string, string][]): void {
-    this.state.items = items.map((item: [string, string]) =>
-      element.create(NotesSidebarItem, {
-        title: item[1],
-        file: item[0],
-        opened: false,
-        app: this.properties.app,
-      })
-    );
+    this.state.items = (items.map((item: [string, string]) =>
+      element.create(
+        (NotesSidebarItem as unknown) as element.IMountable<element.Component>,
+        {
+          title: item[1],
+          file: item[0],
+          opened: false,
+          app: this.properties.app,
+        }
+      )
+    ) as unknown[]) as NotesSidebarItem[];
 
     if (this.rendered) {
       this.paint();
@@ -152,12 +187,15 @@ class NotesSidebar extends element.Component {
     this.state.items.splice(
       0,
       0,
-      element.create(NotesSidebarItem, {
-        title: title,
-        file: file,
-        opened: opened,
-        app: this.properties.app,
-      })
+      (element.create(
+        (NotesSidebarItem as unknown) as element.IMountable<element.Component>,
+        {
+          title: title,
+          file: file,
+          opened: opened,
+          app: this.properties.app,
+        }
+      ) as unknown) as NotesSidebarItem
     );
 
     if (this.rendered) {
@@ -198,14 +236,17 @@ class NotesSidebar extends element.Component {
 class NotesApp extends element.Component {
   private sidebar: NotesSidebar;
   private editor: NotesEditor;
-
   private file?: string;
-  private saved: boolean;
+
+  public saved: boolean;
 
   public constructor(properties: element.Dictionary, mount?: element.Mount) {
     super(properties, mount);
 
-    this.sidebar = element.create(NotesSidebar, { app: this });
+    this.sidebar = (element.create(
+      (NotesSidebar as unknown) as element.IMountable<element.Component>,
+      { app: this }
+    ) as unknown) as NotesSidebar;
     this.editor = element.create(NotesEditor, { app: this });
 
     this.saved = false;
@@ -366,7 +407,7 @@ class NotesApp extends element.Component {
         <div class="notes-surface">
           <div class="notes-left-panel">
             <div class="notes-left-panel-surface">
-              ${this.sidebar}
+              ${(this.sidebar as unknown) as element.Component}
             </div>
           </div>
           <div class="notes-center-panel">
