@@ -55,7 +55,7 @@
     "@typescript-eslint/parser": "^4.6.1",
     "clean-css": "^4.2.3",
     "clean-css-cli": "^4.3.0",
-    "electron": "^10.1.5",
+    "electron": "^11.5.0",
     "electron-packager": "^15.1.0",
     "eslint": "^7.13.0",
     "nodemon": "^2.0.6",
